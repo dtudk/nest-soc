@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, feat/dev_env ]
+    branches: [main, feat/dev_env]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   lint-test:
@@ -27,6 +27,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements_dev.txt
+          python -m pip install -e .
 
       - name: Lint
         run: ruff check .
