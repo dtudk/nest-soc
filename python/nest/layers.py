@@ -79,7 +79,7 @@ class Kinetic:
         float : Electric potential difference for half reaction [V]
         """
         F = 96485.33212    # s.A/mol - Source: https://physics.nist.gov/cuu/Constants/
-        if type(self.mix.species) == Specie:
+        if isinstance(self.mix.species, Specie):
             return self.coeff[0]*self.mix.species.g(T,Ps[0])/(self.n_e*F)
         else:
             return sum([self.coeff[i]*gas.g(T,Ps[i]) for i,gas in enumerate(self.mix.species)])/(self.n_e*F)
@@ -260,7 +260,7 @@ class BinaryFick(PorousTransport):
         References:
         [1] https://doi.org/10.1016/j.jpowsour.2016.01.099
         """
-        if type(mix.species)==Specie:
+        if isinstance(mix.species, Specie):
             return np.array([ self.epsilon/self.tau*self.D_knudsen(T,mix.species) ])
         elif len(mix.species) == 1:
             return np.array([ self.epsilon/self.tau*self.D_knudsen(T,mix.species[0]) ])
