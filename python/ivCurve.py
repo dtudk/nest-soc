@@ -1,9 +1,8 @@
-from nest import *
+from nest import cell, idealGas, layers, problem
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from time import process_time
-from pathlib import Path
 
 def ivCurve():
     # Define reactants

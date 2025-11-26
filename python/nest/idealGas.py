@@ -120,7 +120,7 @@ class Mixture:
     """
     def __init__(self,species:tuple[Specie]):
         self.species = species
-        if type(species)==Specie:
+        if isinstance(species, Specie):
             self.M_ij = 0
         elif len(species) == 1:
             self.M_ij = 0

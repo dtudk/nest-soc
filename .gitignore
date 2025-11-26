@@ -1,1 +1,15 @@
 python/nest/__pycache__/
+python/__pycache__/
+*.pyc
+__pycache__/
+.env
+.venv
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.idea/
+.vscode/
+.DS_Store
