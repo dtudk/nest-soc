@@ -1,23 +1,27 @@
+"""
+Module providing the classes and functions representing the electrochemical cell.
+"""
+
 class Cell:
     """Electrochemical cell model
     
     Parameters:
     area (float) : cell active area [m^2]
-    electrodeFuel (Layer) : fuel-side electrode layer
+    electrode_fuel (Layer) : fuel-side electrode layer
     electrolyte (tuple[Layer]) : tuple of electrolyte-like layers
-    electrodeAir (Layer) : air-side electrode layer
+    electrode_air (Layer) : air-side electrode layer
     elements (int) : number of elements used in finite-element method
 
     Returns:
     Cell : electrochemical cell model
     """
-    def __init__(self,area,electrodeFuel,electrolyte,electrodeAir,elements=10):
+    def __init__(self,area,electrode_fuel,electrolyte,electrode_air,elements=10):
         self.area = area
-        self.electrodeFuel = electrodeFuel
+        self.electrode_fuel = electrode_fuel
         self.electrolyte = electrolyte
-        self.electrodeAir = electrodeAir
+        self.electrode_air = electrode_air
         self.elements = elements
-    def V_nerst(self,T,PsFuel,PsAir):
+    def V_nerst(self,T,Ps_fuel,Ps_air):
         """Thermodynamic voltage (reversible limit) [V]
 
         Parameters:
@@ -28,8 +32,9 @@ class Cell:
         Returns:
         float : Thermodynamic voltage limit [V]
         """
-        return -(self.electrodeFuel.kinetic.V_nerst_half(T,PsFuel)+self.electrodeAir.kinetic.V_nerst_half(T,PsAir))
-    def V(self,j,T,PsFuel,PsAir,**kwargs):
+        return -(self.electrode_fuel.kinetic.V_nerst_half(T,Ps_fuel)+
+                 self.electrode_air.kinetic.V_nerst_half(T,Ps_air))
+    def V(self,j,T,Ps_fuel,Ps_air,**kwargs):
         """Cell voltage [V]
 
         Parameters:
@@ -41,9 +46,12 @@ class Cell:
         Returns:
         float : Cell voltage [V]
         """
-        PsFuel_star = self.electrodeFuel.Ps_star(j,T,PsFuel)
-        PsAir_star = self.electrodeAir.Ps_star(j,T,PsAir)
-        return self.V_nerst(T,PsFuel_star,PsAir_star)-sum(layer.V(j,T) for layer in self.electrolyte)-self.electrodeFuel.V(j,T,Ps=PsFuel_star,**kwargs)-self.electrodeAir.V(j,T,Ps=PsAir_star,**kwargs)
+        Ps_fuel_star = self.electrode_fuel.Ps_star(j,T,Ps_fuel)
+        Ps_air_star = self.electrode_air.Ps_star(j,T,Ps_air)
+        return (self.V_nerst(T,Ps_fuel_star,Ps_air_star)-
+                sum(layer.V(j,T,**kwargs) for layer in self.electrolyte)-
+                self.electrode_fuel.V(j,T,Ps=Ps_fuel_star,**kwargs)-
+                self.electrode_air.V(j,T,Ps=Ps_air_star,**kwargs))
     def dn_fuel(self,j):
         """Net molar flow per element [mol/s] - fuel side
 
@@ -53,7 +61,7 @@ class Cell:
         Returns:
         float : net molar flow at element [mol/s]
         """
-        return self.electrodeFuel.kinetic.molFlux(j)*self.area/self.elements
+        return self.electrode_fuel.kinetic.mol_flux(j)*self.area/self.elements
     def dn_air(self,j):
         """Net molar flow per element [mol/s] - air side
 
@@ -63,4 +71,4 @@ class Cell:
         Returns:
         float : net molar flow at element [mol/s]
         """
-        return self.electrodeAir.kinetic.molFlux(j)*self.area/self.elements
+        return self.electrode_air.kinetic.mol_flux(j)*self.area/self.elements
