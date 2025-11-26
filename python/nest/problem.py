@@ -54,9 +54,14 @@ def advanceStepArea(boundary,cell):
     * auto-diff package is not compatible, because it has not been updated to new numpy versions
     """
     # Use center difference instead of forward difference to reduce the amount of elements required
-    PsFuel = lambda x : (boundary.PsFuel() + (boundary.nFuel+cell.dn_fuel(x))/sum(boundary.nFuel+cell.dn_fuel(x))*boundary.P)/2
-    PsAir = lambda x : (boundary.PsAir() + (boundary.nAir+cell.dn_air(x))/sum(boundary.nAir+cell.dn_air(x))*boundary.P)/2
-    function = lambda x : boundary.V - cell.V(x,boundary.T,PsFuel(x),PsAir(x))
+    def PsFuel(x):
+        return (boundary.PsFuel() + (boundary.nFuel+cell.dn_fuel(x))/sum(boundary.nFuel+cell.dn_fuel(x))*boundary.P)/2
+
+    def PsAir(x):
+        return (boundary.PsAir() + (boundary.nAir+cell.dn_air(x))/sum(boundary.nAir+cell.dn_air(x))*boundary.P)/2
+
+    def function(x):
+        return boundary.V - cell.V(x,boundary.T,PsFuel(x),PsAir(x))
     j = newton(function, boundary.j) # use previous step current density or user-input guess
 
     # Record solution

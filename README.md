@@ -1,11 +1,16 @@
 # nest
-Development code for the NEST (Next-gen electrochemical system tools) project.
+Development code for the NEST (Next-gen electrochemical system tools) project
 
-Python code dependencies:
-* Numpy
-* Matplotlib
-* Scipy
-* Pandas
+## Development setup
 
-Modelica version:
-* OpenModelica v.1.24.4
+```bash
+pip install -r requirements_dev.txt
+```
+
+### Quality checks
+
+- Lint: `ruff check .`
+- Tests: `pytest`
+- Build: `python -m build`
+
+These same commands run automatically in the GitHub Actions workflow located at `.github/workflows/ci.yml` on pushes to `main` and `feat/dev_env`, as well as pull requests targeting `main`.
