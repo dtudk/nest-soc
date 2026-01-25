@@ -6,27 +6,28 @@ from time import process_time
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from pathlib import Path
 
-from nest import cell, layers, problem, ideal_gas
+from nest import properties, layers, problem
 
 def iv_curve():
     """
     Example of using the package for generating a iV curve
     """
     # Define reactants
-    fuel_mix = ideal_gas.Mixture((ideal_gas.BasicSpecies.H2,ideal_gas.BasicSpecies.H2O))
-    air_mix = ideal_gas.Mixture((ideal_gas.BasicSpecies.O2))
+    fuel_mix = properties.Mixture((properties.BasicSpecies.H2,properties.BasicSpecies.H2O))
+    air_mix = properties.Mixture((properties.BasicSpecies.O2))
 
     # Define cell layers
     Ni_YSZ = layers.Layer(
         delta = 3e-4+10e-6,
         kinetic=layers.ButlerVolmer(
-            mix=fuel_mix,
+            gas=fuel_mix,
             alpha=0.59,
             beta=1-0.59,
             gamma= 0.56*1.82527e6,
             theta=1,
-            coeff=np.array([-1,1]),
+            nu=np.array([-1,1]),
             E_act=1.09/8.617333262E-5*8.314510,
             p=np.array([-0.1,0.33]),
             n_e = 2
@@ -62,11 +63,11 @@ def iv_curve():
     LSCF_CGO = layers.Layer(
         delta=3e-5,
         kinetic=layers.ButlerVolmer(
-            mix=air_mix,
+            gas=air_mix,
             alpha=0.65,
             beta=1-0.65,
             gamma=1.51556e8,
-            coeff = np.array([-0.5]),
+            nu = np.array([-0.5]),
             E_act=1.45/8.617333262E-5*8.314510,
             p = np.array([0.22]),
         ),
@@ -78,7 +79,8 @@ def iv_curve():
     )
 
     # Define cell
-    DTU_cell = cell.Cell(16E-4,Ni_YSZ,(YSZ,YSZ_CGO,CGO),LSCF_CGO)
+    DTU_cell = layers.Cell(16E-4,Ni_YSZ,(YSZ,YSZ_CGO,CGO),LSCF_CGO)
+
     # Define boundary conditions
     n_fuel = (24/1E3/3600)*(1E5/8.314510/273.15)    # mol/s
     n_air = 50/1E3/3600*(1E5/8.314510/273.15)   # mol/s
@@ -109,9 +111,11 @@ def iv_curve():
     ax.set_ylabel("Cell voltage (V)")
 
     # Add experimental data for comparison
-    data = pd.read_csv("python/data/858C_50H2_100O2.csv")
+    script_dir = Path(__file__).parent
+    data = pd.read_csv(script_dir / "data/858C_50H2_100O2.csv")
     ax.scatter(data["j"],data["V"],label="Experiment",edgecolors="b",facecolor="none")
     plt.legend()
     return plt.show()
 
-iv_curve()
+if __name__ == "__main__":
+    iv_curve()
