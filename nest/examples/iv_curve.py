@@ -2,13 +2,12 @@
 Package usage example for generating a iV curve
 """
 from time import process_time
-
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from pathlib import Path
 
-from nest import properties, layers, problem
+from nest import properties, layers, cell
 
 def iv_curve():
     """
@@ -79,14 +78,14 @@ def iv_curve():
     )
 
     # Define cell
-    DTU_cell = layers.Cell(16E-4,Ni_YSZ,(YSZ,YSZ_CGO,CGO),LSCF_CGO)
+    DTU_cell = cell.Cell(16E-4,Ni_YSZ,(YSZ,YSZ_CGO,CGO),LSCF_CGO)
 
     # Define boundary conditions
     n_fuel = (24/1E3/3600)*(1E5/8.314510/273.15)    # mol/s
     n_air = 50/1E3/3600*(1E5/8.314510/273.15)   # mol/s
     x_H2 = 0.5
     x_O2 = 1
-    conditions = problem.BoundaryData(
+    conditions = cell.BoundaryData(
         V=1.25,
         j=-1E4,
         n_fuel=np.array([n_fuel*x_H2,n_fuel*(1-x_H2)]),
@@ -101,8 +100,8 @@ def iv_curve():
     start_time = process_time()
     for i,V in enumerate(voltages):
         conditions.V = V
-        solutions = problem.solve_area(conditions,DTU_cell)
-        currents[i] = sum(s[1] for s in solutions)/DTU_cell.elements
+        solutions = DTU_cell.solve_for_voltage(conditions)
+        currents[i] = np.sum(solutions[1])/DTU_cell.elements
     print(f"Computation time : {process_time()-start_time} seconds")
 
     fig, ax = plt.subplots()
