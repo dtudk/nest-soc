@@ -5,6 +5,8 @@ import numpy as np
 from scipy.optimize import newton
 from scipy.integrate import solve_ivp
 
+from nest.layers import Layer
+
 class BoundaryData:
     """
     Boundary data for solving initial value ODE
@@ -25,12 +27,12 @@ class BoundaryData:
         pressure [Pa]
     """
     def __init__(self,
-                 V=0,
-                 j=0,
-                 n_fuel=(0,),
-                 n_air=(0,),
-                 T=0,
-                 P=0):
+                 V:float=0,
+                 j:float=0,
+                 n_fuel:np.ndarray=np.zeros(1),
+                 n_air:np.ndarray=np.zeros(1),
+                 T:float=0,
+                 P:float=0):
         self.V = V
         self.j = j
         self.n_fuel = n_fuel
@@ -65,13 +67,21 @@ class Cell:
     elements : int, optional
         number of elements used in finite-element method
     """
-    def __init__(self,area,electrode_fuel,electrolyte,electrode_air,elements=10):
+    def __init__(self,
+                 area:float,
+                 electrode_fuel:Layer,
+                 electrolyte:Layer,
+                 electrode_air:Layer,
+                 elements:int=10):
         self.area = area
         self.electrode_fuel = electrode_fuel
         self.electrolyte = electrolyte
         self.electrode_air = electrode_air
         self.elements = elements
-    def V_nerst(self,T,Ps_fuel,Ps_air):
+    def V_nerst(self,
+                T:float,
+                Ps_fuel:np.ndarray,
+                Ps_air:np.ndarray)->float:
         """
         Thermodynamic voltage (reversible limit) [V]
 
@@ -86,7 +96,12 @@ class Cell:
         """
         return -(self.electrode_fuel.kinetic.V_nerst_half(T,Ps_fuel)+
                  self.electrode_air.kinetic.V_nerst_half(T,Ps_air))
-    def V(self,j,T,Ps_fuel,Ps_air,**kwargs):
+    def V(self,
+          j:float,
+          T:float,
+          Ps_fuel:np.ndarray,
+          Ps_air:np.ndarray,
+          **kwargs)->float:
         """
         Cell voltage [V]
 
@@ -100,10 +115,6 @@ class Cell:
             Partial pressures fuel side [Pa]
         Ps_air : numpy.ndarray
             Partial pressures air side [Pa]
-
-        Notes
-        -----
-        * TO-DO : Split the keywords by layers
         """
         Ps_fuel_star = self.electrode_fuel.Ps_star(j,T,Ps_fuel)
         Ps_air_star = self.electrode_air.Ps_star(j,T,Ps_air)
@@ -122,7 +133,8 @@ class Cell:
             V_el += layer.V(j,T,**kwargs_el)
 
         return (V_th-V_el-V_fuel-V_air)
-    def dn_fuel(self,j):
+    def dn_fuel(self,
+                j:float)->np.ndarray:
         """
         Net molar flow per element [mol/s] - fuel side
 
@@ -132,7 +144,8 @@ class Cell:
             current density [A/m^2]
         """
         return self.electrode_fuel.kinetic.mol_flux(j)*self.area/self.elements
-    def dn_air(self,j):
+    def dn_air(self,
+               j:float)->np.ndarray:
         """
         Net molar flow per element [mol/s] - air side
 
@@ -142,10 +155,36 @@ class Cell:
             current density [A/m^2]
         """
         return self.electrode_air.kinetic.mol_flux(j)*self.area/self.elements
-    def Ps_fuel(self,boundary,j):
+    def Ps_fuel(self,
+                boundary:BoundaryData,
+                j:float)->np.ndarray:
+        """
+        Partial pressure for fuel channel [Pa]
+        assuming the central difference
+        
+        Parameters
+        ----------
+        boundary : BoundaryData
+            boundary state variables
+        j : float
+            current density [A/cm^2]
+        """
         return (boundary.Ps_fuel() + (boundary.n_fuel+self.dn_fuel(j))/
                     sum(boundary.n_fuel+self.dn_fuel(j))*boundary.P)/2
-    def Ps_air(self,boundary,j):
+    def Ps_air(self,
+               boundary:BoundaryData,
+               j:float)->np.ndarray:
+        """
+        Partial pressure for air channel [Pa]
+        assuming the central difference
+        
+        Parameters
+        ----------
+        boundary : BoundaryData
+            boundary state variables
+        j : float
+            current density [A/cm^2]
+        """
         return (boundary.Ps_fuel() + (boundary.n_air+self.dn_air(j))/
                     sum(boundary.n_air+self.dn_air(j))*boundary.P)/2
     def advance_step_area(self,
@@ -172,7 +211,7 @@ class Cell:
         def find_current(x):
             return boundary.V - self.V(x,boundary.T,self.Ps_fuel(boundary,x),self.Ps_air(boundary,x),**kwargs)
         
-        j = newton(find_current, boundary.j, tol=10) # use previous step current density or user-input guess
+        j = newton(find_current, boundary.j, tol=10) # Note: it uses previous step current density or user-input guess
 
         # Record solution
         n_out_fuel = boundary.n_fuel+self.dn_fuel(j)
@@ -193,10 +232,6 @@ class Cell:
             Initial value conditions
         cell : Cell
             Model for electrochemical cell
-
-        Notes
-        -----
-        * Consider to change solutions to another type of object for more easy access
         """
         n_layers = 2+len(self.electrolyte)
         n_variables = 4+len(boundary.n_fuel)+len(boundary.n_air)+n_layers
@@ -214,7 +249,7 @@ class Cell:
             for i,n in enumerate(boundary.n_air):
                 solutions[i+4+len(boundary.n_fuel)][e] = n
             aux = 4 + len(boundary.n_fuel) + len(boundary.n_air)
-            # Recording overpotentials        
+            # Recording overpotentials (for analysis and degradation modeling)
             kwargs_fuel = {key: value[0] for key,value in kwargs_el.items()} 
             solutions[aux][e] = self.electrode_fuel.V(boundary.j,boundary.T,self.Ps_fuel(boundary,boundary.j),**kwargs_fuel)
             kwargs_air = {key: value[1] for key,value in kwargs_el.items()} 
@@ -245,20 +280,46 @@ class Cell:
 
         boundary.V = newton(lambda V : find_voltage(V,**kwargs),boundary.V,tol=5E-4)
         return self.solve_for_voltage(boundary,**kwargs)
-    def count_pol_deg(self):
+    def count_pol_deg(self)->int:
+        """
+        Returns number of degration models for polarization resistance
+        """
         counter = 0
         if self.electrode_fuel.degradation.pol_active:
             counter +=1
         if self.electrode_air.degradation.pol_active:
             counter +=1
         return counter
-    def count_ohm_deg(self):
+    def count_ohm_deg(self)->int:
+        """
+        Returns number of degradation models for ohmic resistance
+        """
         counter = 0
         for layer in self.electrolyte:
             if layer.degradation.ohm_active:
                 counter +=1
         return counter
-    def solve_time_step(self,y,boundary,mode):
+    def solve_time_step(self,
+                        y:np.ndarray,
+                        boundary:BoundaryData,
+                        mode:str)->np.ndarray:
+        """
+        Returns the steady-state solution matrix for boundary conditions
+
+        Parameters
+        ----------
+        y : np.ndarray
+            array of material properties from the degradation ODE
+        boundary : BoundaryData
+            state variable conditions of the cell
+        mode : str
+            operational mode: "current" or "voltage" constant
+
+        Notes
+        -----
+        * Missing the "current+voltage" mode of operation (varying temperature)
+
+        """
         n_pol_deg = self.count_pol_deg()
         n_ohm_deg = self.count_ohm_deg()
         n_layers = 2 + len(self.electrolyte)
@@ -281,7 +342,6 @@ class Cell:
                     aux +=1
         kwargs = {"pol_deg": pol_deg, "ohm_deg": ohm_deg}
         
-        # 2. Solve for voltage or for current
         if mode == "voltage":
             steady_solution = self.solve_for_voltage(boundary,**kwargs)
             boundary.j = np.sum(steady_solution[1])/self.elements
@@ -291,9 +351,27 @@ class Cell:
         else:
             raise ValueError("Undefined mode of operation")
         
-        return steady_solution
+        return steady_solution      
+    def advance_time_step(self,
+                          t:np.ndarray,
+                          y:np.ndarray,
+                          boundary:BoundaryData,
+                          mode:str)->np.ndarray:
+        """
+        Returns the material change rates from degradation
+        units varies depending on the degradation model
         
-    def advance_time_step(self,t,y,boundary,mode):
+        Parameters
+        ----------
+        t : np.ndarray
+            time array required for scipy.integrate.ivp_solve
+        y : np.ndarray
+            material variables (pol_deg and ohm_deg) that change during degration
+        boundary : BoundaryData
+            state variables for the cell related to the boundary conditions of the ODE
+        mode : str
+            operational mode for the degradation simulation (i.e., "current" or "voltage")
+        """
         # 1. Create the placeholders
         n_pol_deg = self.count_pol_deg()
         n_ohm_deg = self.count_ohm_deg()
@@ -334,6 +412,18 @@ class Cell:
         # 4. Return it
         return np.concatenate((pol_deg_dt,ohm_deg_dt,power_dt))
     def solve_for_time(self,boundary,mode,t_max):
+        """
+        Wrapper to solve the differential equations for degradation
+        
+        Parameters
+        ----------
+        boundary : BoundaryData
+            state variables for the cell related to the boundary conditions of the ODE
+        mode : str
+            operational mode for the degradation simulation (i.e., "current" or "voltage")
+        t_max : int
+            Final time for simulation in hours [h]
+        """
         # Initial value boundary
         n_pol_deg = self.count_pol_deg()
         n_ohm_deg = self.count_ohm_deg()

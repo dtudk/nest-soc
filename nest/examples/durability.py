@@ -8,8 +8,14 @@ from nest import properties,layers,cell,degradation
 import matplotlib.pyplot as plt
 
 def durability_test():
+    """
+    Example of using the package to predict the voltage drop due to degradation
+    """
+    # Define reactants
     fuelMix = properties.Mixture((properties.BasicSpecies.H2,properties.BasicSpecies.H2O))
     airMix = properties.Mixture((properties.BasicSpecies.O2))
+
+    # Define cell layers
     Ni_YSZ = layers.Layer(
         delta = 1000e-6+10e-6,
         kinetic=layers.ButlerVolmer(
@@ -101,26 +107,30 @@ def durability_test():
         )
     )
 
+    # Define cell
     cellModel = cell.Cell(16e-4,Ni_YSZ,(YSZ,YSZ_CGO,CGO,Crofer22,CrScale),LSCF_CGO,elements=5)
-        
-    V_fuel = 8.23E-05
-    V_air = 0.000345476 
+    
+    # Define boundary conditions
+    n_fuel = 8.23E-05 # mol/s
+    n_air = 0.000345476 # mol/s
     x_H2 = 0.94
     x_O2 = 0.21
     conditions = cell.BoundaryData(
         V=0.9,
         j=0.7E4,
-        n_fuel=np.array([V_fuel*x_H2,V_fuel*(1-x_H2)]),
-        n_air=np.array([V_air*x_O2,V_air*(1-x_O2)]),
+        n_fuel=np.array([n_fuel*x_H2,n_fuel*(1-x_H2)]),
+        n_air=np.array([n_air*x_O2,n_air*(1-x_O2)]),
         T=700+273.15,
         P=1E5)
     
+    # Solve ODE problem
     start_time = process_time()
     solution = cellModel.solve_for_time(conditions,"current",5000)
     print(f"Computation time : {process_time()-start_time} seconds")
 
     fig, ax = plt.subplots()
 
+    # Solve 1D problem for material conditions
     conditions.V = 0.75
     y_matrix = np.transpose(solution.y)
     V = np.zeros(len(y_matrix))
@@ -140,3 +150,6 @@ def durability_test():
     plt.legend()
 
     return plt.show()
+
+if __name__ == "__main__":
+    durability_test()
