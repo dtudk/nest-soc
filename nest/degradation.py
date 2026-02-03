@@ -3,7 +3,7 @@ from scipy.constants import pi
 from abc import ABC, abstractmethod
 
 from nest.constants import R,F
-from nest.cell import BoundaryData
+from nest.boundary import BoundaryData
 
 class Degradation(ABC):
     """
