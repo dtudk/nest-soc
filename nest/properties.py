@@ -167,7 +167,7 @@ class Mixture:
 
     def D_ij(self, i: int, j: int, T: float, P: float) -> float:
         """
-        Binary diffusivities [m^2/s^2]
+        Binary diffusivities [m^2/s]
 
         Parameters
         ----------
