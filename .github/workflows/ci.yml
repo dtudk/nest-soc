@@ -47,4 +47,5 @@ jobs:
         run: pip install pytest
       
       - name: Run pytest
-        run: pytest --maxfail=1 --disable-warnings -q
+        run: pytest
+        working-directory: .
