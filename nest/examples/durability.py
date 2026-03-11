@@ -138,6 +138,7 @@ def durability_test():
     ax.scatter(
         data["t"], data["V"], label="Experiment", edgecolors="b", facecolor="none"
     )
+    plt.title("94%H2+6%H2O | 21%O2+79%N2 | 700 degC", fontsize=14, loc="center")
     plt.legend()
 
     return plt.show()

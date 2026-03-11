@@ -5,9 +5,114 @@ Module providing classes and functions for creating the differential equation pr
 import numpy as np
 from scipy.optimize import newton
 from scipy.integrate import solve_ivp
+from abc import ABC, abstractmethod
 
+from nest.constants import R
 from nest.layers import Layer
 from nest.boundary import BoundaryData
+from nest.properties import Mixture
+
+
+class Reaction(ABC):
+    """
+    Reaction model for advection flow
+
+    Parameters
+    ----------
+    k : float
+        kinetic rate constant [mol/m2]
+    E : float
+        activation energy for temperature dependency [J/mol.K]
+    nu : np.ndarray
+        stoichiometric factors for reaction and expected gas mixture [-]
+    index : np.ndarray
+        array indexes for species to match internal reaction rate equations [-]
+    """
+
+    def __init__(self, k: float, E: float, nu: np.ndarray, index: np.ndarray):
+        self.k = k
+        self.E = E
+        self.nu = nu
+        self.index = index
+
+    def rate_T(self, T: float):
+        """
+        Reaction rate constant for specific temperature [mol/m2]
+
+        Parameters
+        ----------
+        T : float
+            temperature [K]
+        """
+        return self.k * np.exp(-self.E / (R * T))
+
+    @abstractmethod
+    def rate(self, T: float, Ps: np.ndarray, gases: Mixture):
+        """
+        Kinetic reaction rate [mol/m2]
+
+        Parameters
+        ----------
+        T: float
+            temperature [K]
+        Ps: np.ndarray
+            partial pressures for each specie [Pa]
+        gases: Mixture
+            information on gas mixture components
+        """
+        return 0
+
+    def dn(self, T: float, Ps: np.ndarray):
+        """
+        Mole flow variation from reaction [mol/s]
+
+        Parameters
+        ----------
+        T: float
+            temperature [K]
+        Ps: np.ndarray
+            partial pressure for each specie [Pa]
+        """
+        return self.nu * self.rate(T, Ps)
+
+
+class NoReaction(Reaction):
+    """
+    Default class without reaction
+    """
+
+    def __init__(self):
+        self.k = 0
+        self.E = 0
+        self.nu = np.array([0])
+        self.index = np.array([0])
+
+    def rate(self, T, Ps):
+        return 0
+
+
+class WaterGasShift(Reaction):
+    """
+    Water gas shift reaction
+
+    Notes
+    -----
+    * The original reaction assumes homogenous reaction along porous media [mol/m3].
+    * Here the reaction is assumed to be heterogenous [mol/m2] by multiplying a thickness length [m] to the kinetic rate.
+    * The user defines the thickness based on the size of the support layer.
+
+    References
+    ----------
+    1. https://doi.org/10.1016/j.ijheatmasstransfer.2004.04.010
+    """
+
+    def rate(self, T, Ps):
+        H2_i, H2O_i, CO2_i, CO_i = self.index
+        P = sum(Ps)
+        x = Ps / P
+        Z = 1000 / T - 1
+        K_eq = np.exp(-0.2935 * Z**3 + 0.6351 * Z**2 + 4.1788 * Z + 0.3169)
+        return self.rate_T(T) * (x[CO_i] * x[H2O_i] - x[H2_i] * x[CO2_i] / K_eq) * P**2
 
 
 class Cell:
@@ -35,12 +140,14 @@ class Cell:
         electrolyte: Layer,
         electrode_air: Layer,
         elements: int = 10,
+        reactions: tuple[Reaction] = (NoReaction(),),
     ):
         self.area = area
         self.electrode_fuel = electrode_fuel
         self.electrolyte = electrolyte
         self.electrode_air = electrode_air
         self.elements = elements
+        self.reactions = reactions
 
     def V_nerst(self, T: float, Ps_fuel: np.ndarray, Ps_air: np.ndarray) -> float:
         """
@@ -95,7 +202,7 @@ class Cell:
 
         return V_th - V_el - V_fuel - V_air
 
-    def dn_fuel(self, j: float) -> np.ndarray:
+    def dn_fuel(self, j: float, boundary: BoundaryData) -> np.ndarray:
         """
         Net molar flow per element [mol/s] - fuel side
 
@@ -103,8 +210,35 @@ class Cell:
         ----------
         j : float
             current density [A/m^2]
+        T : float
+            temperature [K]
+        Ps : np.ndarray
+            partial pressures [Pa]
         """
-        return self.electrode_fuel.kinetic.mol_flux(j) * self.area / self.elements
+        # Get intermediary composition after electrochemistry
+        dn_fuel_int = (
+            boundary.n_fuel
+            + self.electrode_fuel.kinetic.mol_flux(j) * self.area / self.elements
+        )
+        Ps = boundary.P * dn_fuel_int / sum(dn_fuel_int)
+        # Get kinetic rate
+        T = boundary.T
+        source = np.zeros(len(Ps))
+        for r in self.reactions:
+            dn = r.dn(T, Ps)
+            for i, dn_i in enumerate(dn):
+                source[i] += dn_i
+        # Limit problems with sparse discretization (negative flow rates)
+        ratio = np.zeros(len(dn_fuel_int))
+        for i, r in enumerate(ratio):
+            r = (source[i] * self.area / self.elements) / dn_fuel_int[i]
+        if max(ratio) > 1.0:
+            source = source / (max(ratio) + 1e-3)
+        return (
+            (self.electrode_fuel.kinetic.mol_flux(j) + source)
+            * self.area
+            / self.elements
+        )
 
     def dn_air(self, j: float) -> np.ndarray:
         """
@@ -131,8 +265,8 @@ class Cell:
         """
         return (
             boundary.Ps_fuel()
-            + (boundary.n_fuel + self.dn_fuel(j))
-            / sum(boundary.n_fuel + self.dn_fuel(j))
+            + (boundary.n_fuel + self.dn_fuel(j, boundary))
+            / sum(boundary.n_fuel + self.dn_fuel(j, boundary))
             * boundary.P
         ) / 2
 
@@ -189,7 +323,7 @@ class Cell:
         )  # Note: it uses previous step current density or user-input guess
 
         # Record solution
-        n_out_fuel = boundary.n_fuel + self.dn_fuel(j)
+        n_out_fuel = boundary.n_fuel + self.dn_fuel(j, boundary)
         n_out_air = boundary.n_air + self.dn_air(j)
         T_out = boundary.T  # Simplified for now - Isothermic
         P_out = boundary.P  # Simplified for now - Isobaric

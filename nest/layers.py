@@ -4,6 +4,7 @@ Module providing the classes and functions for the material layers in the single
 
 import numpy as np
 from scipy.optimize import newton
+from scipy.integrate import solve_ivp
 from scipy.constants import pi
 
 from nest.constants import R, F, P_atm
@@ -342,7 +343,9 @@ class PorousTransport:
         """
         return self.dp / 3 * (8 * R * T / (pi * specie.M / 1000)) ** (0.5)
 
-    def dP_dl(self, mol_flux: float, T: float, P: float, gas: Mixture) -> float:
+    def dP_dl(
+        self, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture, delta: float
+    ) -> float:
         """
         Pressure drop along layer thickness [Pa/m]
 
@@ -356,6 +359,8 @@ class PorousTransport:
             Pressure [Pa]
         gas : Mixture
             Mixture of species
+        delta : float
+            Thickness of the porous layer [m]
 
         Notes
         -----
@@ -424,9 +429,11 @@ class BinaryFick(PorousTransport):
                 "Binary Fick is only valid for pure substance or binary mixture"
             )
 
-    def dP_dl(self, mol_flux: float, T: float, P: float, gas: Mixture) -> np.ndarray:
+    def dP_dl(
+        self, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture, delta: float
+    ) -> np.ndarray:
         """
-        Partial pressure ratio [Pa/m]
+        Partial pressures at the reaction site [Pa]
 
         Parameters
         ----------
@@ -444,7 +451,117 @@ class BinaryFick(PorousTransport):
         * This function assumes: (i) no transiency (ii) binary mixture (iii) ideal gas law
         * Function also assumes -mol_flus as boundary condition for molar flux at x = x_max
         """
-        return mol_flux / self.D_eff(T, P, gas) * R * T
+        return P + mol_flux / self.D_eff(T, sum(P), gas) * R * T * delta
+
+
+class StefanMaxwell(PorousTransport):
+    """
+    Stefan-Maxwell gas model for multi-component mixture
+
+    Parameters
+    ----------
+    dp : float
+        average porous diameter [m]
+    epsilon : float
+        porosity
+    tau : float
+        tortuosity
+    """
+
+    def D_eff(self, T: float, P: float, gas: Mixture) -> np.ndarray:
+        """
+        Effective binary diffusivity [m^2/s^2]
+
+        Parameters
+        ----------
+        T : float
+            Temperature [K]
+        P : float
+            Pressure [Pa]
+        gas : Mixture
+            Misture of species
+
+        Notes
+        -----
+        * Equilvalent binary diffusivities are calculated based on the extended Stefan Maxwell model proposed by [1]
+
+        References
+        ----------
+        1. https://doi.org/10.1016/j.jpowsour.2016.01.099
+        """
+        if isinstance(gas.species, Specie):
+            return np.array([self.epsilon / self.tau * self.D_knudsen(T, gas.species)])
+        elif len(gas.species) == 1:
+            return np.array(
+                [self.epsilon / self.tau * self.D_knudsen(T, gas.species[0])]
+            )
+        else:
+            n_species = len(gas.species)
+            return (
+                self.epsilon
+                / self.tau
+                / 2
+                * np.array(
+                    [
+                        [
+                            1
+                            / (
+                                1 / gas.D_ij(i, j, T, P)
+                                + 1 / self.D_knudsen(T, gas.species[i])
+                            )
+                            + 1
+                            / (
+                                1 / gas.D_ij(i, j, T, P)
+                                + 1 / self.D_knudsen(T, gas.species[j])
+                            )
+                            for j in range(n_species)
+                        ]
+                        for i in range(n_species)
+                    ]
+                )
+            )
+
+    def dP_dl(
+        self, mol_flux: float, T: float, P: np.ndarray, gas: Mixture, delta: float
+    ) -> np.ndarray:
+        """
+        Partial pressures at the reaction site [Pa]
+
+        Parameters
+        ----------
+        mol_flux : float
+            molar flux [mol/m^2]
+        T : float
+            Temperature [K]
+        P : float
+            Pressure [Pa]
+        gas : Mixture
+            Mixture of species
+
+        Notes
+        -----
+        * This function assumes: (i) no transiency (ii) binary mixture (iii) ideal gas law
+        * Stefan-Maxwell model for diffusion
+        * Note that the molar flux in the diffusion equations is equal to -mol_flux
+        """
+        P_gas = sum(P)
+        D = self.D_eff(T, P_gas, gas)
+
+        def molar_fractions(y, x):
+            n_species = len(gas.species)
+            dx_dy = np.zeros(n_species)
+            for i in range(n_species):
+                sum_1 = 0
+                sum_2 = 0
+                for j in range(n_species):
+                    if j != i:
+                        sum_1 += x[j] / D[i][j]
+                        sum_2 += mol_flux[j] / D[i][j]
+                dx_dy[i] = R * T / P_gas * (mol_flux[i] * sum_1 - x[i] * sum_2)
+            return dx_dy
+
+        solution = solve_ivp(molar_fractions, (0, delta), P)
+        return solution.y[:, -1]
 
 
 class Layer:
@@ -532,12 +649,8 @@ class Layer:
         Ps : numpy.ndarray
             partial pressure [Pa]
         """
-        return (
-            Ps
-            + self.transport.dP_dl(
-                self.kinetic.mol_flux(j), T, sum(Ps), self.kinetic.gas
-            )
-            * self.delta
+        return self.transport.dP_dl(
+            self.kinetic.mol_flux(j), T, Ps, self.kinetic.gas, self.delta
         )
 
     def V(self, j: float, T: float, Ps=np.array([0]), **kwargs) -> float:

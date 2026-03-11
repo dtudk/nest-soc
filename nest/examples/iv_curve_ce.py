@@ -1,5 +1,5 @@
 """
-Package usage example for generating a iV curve operating with H2-H2O mixture
+Package usage example for generating a iV curve operating with syngas mixture
 """
 
 from time import process_time
@@ -11,15 +11,22 @@ from pathlib import Path
 from nest import properties, layers, cell
 
 
-def iv_curve():
+def iv_curve_ce():
     """
-    Example of using the package for generating a iV curve operating with H2-H2O mixture
+    Example of using the package for generating a iV curve operating with syngas mixture
     """
     # Define reactants
     fuel_mix = properties.Mixture(
-        (properties.BasicSpecies.H2, properties.BasicSpecies.H2O)
+        (
+            properties.BasicSpecies.H2,
+            properties.BasicSpecies.H2O,
+            properties.BasicSpecies.CO2,
+            properties.BasicSpecies.CO,
+        )
     )
     air_mix = properties.Mixture((properties.BasicSpecies.O2))
+
+    # Define cell layers
     Ni_YSZ = layers.Layer(
         delta=3e-4 + 10e-6,
         kinetic=layers.ButlerVolmer(
@@ -28,12 +35,12 @@ def iv_curve():
             beta=1 - 0.59,
             gamma=0.56 * 1.82527e6,
             theta=1,
-            nu=np.array([-1, 1]),
+            nu=np.array([-1, 1, 0, 0]),
             E_act=1.09 / 8.617333262e-5 * 8.314510,
-            p=np.array([-0.1, 0.33]),
+            p=np.array([-0.1, 0.33, 0.0, 0.0]),
             n_e=2,
         ),
-        transport=layers.BinaryFick(dp=6e-7, epsilon=0.3, tau=3),
+        transport=layers.StefanMaxwell(dp=6e-7, epsilon=0.3, tau=3),
     )
     YSZ = layers.Layer(
         delta=12e-6 - 2e-6,
@@ -68,25 +75,35 @@ def iv_curve():
     )
 
     # Define cell
-    DTU_cell = cell.Cell(16e-4, Ni_YSZ, (YSZ, YSZ_CGO, CGO), LSCF_CGO)
+    WGS = cell.WaterGasShift(
+        k=0.0171 * 3e-4,
+        E=103191,
+        nu=np.array([1.0, -1.0, 1.0, -1.0]),
+        index=np.array([0, 1, 2, 3]),
+    )
+    DTU_cell = cell.Cell(16e-4, Ni_YSZ, (YSZ, YSZ_CGO, CGO), LSCF_CGO, reactions=(WGS,))
 
     # Define boundary conditions
     n_fuel = (24 / 1e3 / 3600) * (1e5 / 8.314510 / 273.15)  # mol/s
     n_air = 50 / 1e3 / 3600 * (1e5 / 8.314510 / 273.15)  # mol/s
-    x_H2 = 0.5
+    x_H2 = 0.1
+    x_H2O = 0.4
+    x_CO2 = 0.5
+    x_CO = 0.0
+
     x_O2 = 1
     conditions = cell.BoundaryData(
         V=1.25,
         j=-1e4,
-        n_fuel=np.array([n_fuel * x_H2, n_fuel * (1 - x_H2)]),
+        n_fuel=np.array([n_fuel * x_H2, n_fuel * x_H2O, n_fuel * x_CO2, n_fuel * x_CO]),
         n_air=np.array([n_air * x_O2]),
-        T=858 + 273.15,
+        T=754 + 273.15,
         P=1e5,
     )
 
     # Solve 1D problem for different voltages
     n = 10
-    voltages = np.linspace(0.70, 1.25, n)
+    voltages = np.linspace(0.75, 1.25, n)
     currents = np.zeros(n)
     start_time = process_time()
     for i, V in enumerate(voltages):
@@ -104,14 +121,14 @@ def iv_curve():
 
     # Add experimental data for comparison
     script_dir = Path(__file__).parent
-    data = pd.read_csv(script_dir / "data/858C_50H2_100O2.csv")
+    data = pd.read_csv(script_dir / "data/754C_10H2_40H2O_50CO2.csv")
     ax.scatter(
         data["j"], data["V"], label="Experiment", edgecolors="b", facecolor="none"
     )
-    plt.title("50%H2+50%H2O | 100% O2 | 858 degC", fontsize=14, loc="center")
     plt.legend()
+    plt.title("10%H2+40%H2O+50%CO2 | 100% O2 | 754 degC", fontsize=14, loc="center")
     return plt.show()
 
 
 if __name__ == "__main__":
-    iv_curve()
+    iv_curve_ce()
