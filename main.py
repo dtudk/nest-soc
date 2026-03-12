@@ -1,5 +1,6 @@
 from nest.examples.iv_curve import iv_curve
 from nest.examples.iv_curve_ce import iv_curve_ce
+from nest.examples.iv_curve_co2 import iv_curve_co2
 from nest.examples.durability import durability_test
 
 if __name__ == "__main__":
@@ -7,3 +8,4 @@ if __name__ == "__main__":
     iv_curve()
     iv_curve_ce()
     durability_test()
+    iv_curve_co2()
