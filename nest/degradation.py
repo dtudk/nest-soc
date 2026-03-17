@@ -379,7 +379,7 @@ class NickelAgglomeration(Degradation):
             * (Ps_fuel_star[1] / 1e5)
             / (Ps_fuel_star[0] / 1e5) ** 0.5
         )
-        E_a = 137e3  # J/mol - Source: https://www.sciencedirect.com/science/article/pii/S0920586114000431
+        E_a = 242e3  # J/mol - Source: https://www.sciencedirect.com/science/article/pii/S0196890421000790
         if r > self.r_ed_max * 1e6:
             return 0
         else:

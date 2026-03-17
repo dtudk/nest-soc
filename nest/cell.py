@@ -515,17 +515,17 @@ class Cell:
             P_fuel_tpb = self.electrode_fuel.Ps_star(
                 steady_solution[1][j],
                 steady_solution[2][j],
-                self.Ps_fuel(boundary, steady_solution[1][j]),
+                self.Ps_fuel(in_b, steady_solution[1][j]),
             )
             P_air_tpb = self.electrode_air.Ps_star(
                 steady_solution[1][j],
                 steady_solution[2][j],
-                self.Ps_air(boundary, steady_solution[1][j]),
+                self.Ps_air(in_b, steady_solution[1][j]),
             )
+            # OBS: boundary.P may not be equal to sum(P_fuel_tpb) or sum(P_air_tpb)
             in_b = BoundaryData(
                 boundary.V, boundary.j, P_fuel_tpb, P_air_tpb, boundary.T, boundary.P
             )
-
             # 3.2 Calculate rates
             if self.electrode_fuel.degradation.pol_active:
                 in_b.V = steady_solution[index][j]
