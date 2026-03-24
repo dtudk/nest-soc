@@ -520,7 +520,43 @@ class StefanMaxwell(PorousTransport):
                     ]
                 )
             )
-
+        
+    def dx_dl(self, x:np.ndarray, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture) -> np.ndarray:
+        """
+        Molar fraction gradient along layer thickness [1/m]
+        
+        Parameters
+        ----------
+        x : numpy.ndarray
+            Molar fractions
+        mol_flux : float
+            molar flux [mol/m^2]
+        T : float
+            Temperature [K]
+        P : float
+            Pressure [Pa]
+        gas : Mixture
+            Mixture of species
+        
+        Notes
+        -----
+        * This function assumes: (i) no transiency (ii) multi-component mixture (iii) ideal gas law
+        * Note that the molar flux in the diffusion equations is equal to -mol_flux
+        """
+        P_gas = sum(P)
+        D = self.D_eff(T, P_gas, gas)
+        n_species = len(gas.species)
+        dx_dy = np.zeros(n_species)
+        for i in range(n_species):
+            sum_1 = 0
+            sum_2 = 0
+            for j in range(n_species):
+                if j != i:
+                    sum_1 += x[j] / D[i][j]
+                    sum_2 += mol_flux[j] / D[i][j]
+            dx_dy[i] = R * T / P_gas * (mol_flux[i] * sum_1 - x[i] * sum_2)
+        return dx_dy
+    
     def dP_dl(
         self, mol_flux: float, T: float, P: np.ndarray, gas: Mixture, delta: float
     ) -> np.ndarray:
@@ -542,23 +578,9 @@ class StefanMaxwell(PorousTransport):
         -----
         * This function assumes: (i) no transiency (ii) binary mixture (iii) ideal gas law
         * Stefan-Maxwell model for diffusion
-        * Note that the molar flux in the diffusion equations is equal to -mol_flux
         """
-        P_gas = sum(P)
-        D = self.D_eff(T, P_gas, gas)
-
         def molar_fractions(y, x):
-            n_species = len(gas.species)
-            dx_dy = np.zeros(n_species)
-            for i in range(n_species):
-                sum_1 = 0
-                sum_2 = 0
-                for j in range(n_species):
-                    if j != i:
-                        sum_1 += x[j] / D[i][j]
-                        sum_2 += mol_flux[j] / D[i][j]
-                dx_dy[i] = R * T / P_gas * (mol_flux[i] * sum_1 - x[i] * sum_2)
-            return dx_dy
+            return self.dx_dl(y, x, mol_flux, T, P, gas)
 
         solution = solve_ivp(molar_fractions, (0, delta), P)
         return solution.y[:, -1]
