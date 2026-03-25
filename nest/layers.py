@@ -329,7 +329,7 @@ class PorousTransport:
 
     def D_knudsen(self, T: float, specie: Specie) -> float:
         """
-        Knudsen diffusion coefficient [m^2/s^2]
+        Knudsen diffusion coefficient [m^2/s]
 
         Parameters
         ----------
@@ -385,7 +385,7 @@ class BinaryFick(PorousTransport):
 
     def D_eff(self, T: float, P: float, gas: Mixture) -> np.ndarray:
         """
-        Effective binary diffusivity [m^2/s^2]
+        Effective binary diffusivity [m^2/s]
 
         Parameters
         ----------
@@ -521,20 +521,18 @@ class StefanMaxwell(PorousTransport):
                 )
             )
         
-    def dx_dl(self, x:np.ndarray, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture) -> np.ndarray:
+    def dc_dl(self, x:np.ndarray, mol_flux: np.ndarray, T: float, gas: Mixture) -> np.ndarray:
         """
-        Molar fraction gradient along layer thickness [1/m]
+        Molar concentration gradient along layer thickness [mol/m^4]
         
         Parameters
         ----------
         x : numpy.ndarray
-            Molar fractions
+            Molar concentrations along layer thickness [Pa]
         mol_flux : float
-            molar flux [mol/m^2]
+            molar flux [mol/m^2.s]
         T : float
             Temperature [K]
-        P : float
-            Pressure [Pa]
         gas : Mixture
             Mixture of species
         
@@ -543,10 +541,10 @@ class StefanMaxwell(PorousTransport):
         * This function assumes: (i) no transiency (ii) multi-component mixture (iii) ideal gas law
         * Note that the molar flux in the diffusion equations is equal to -mol_flux
         """
-        P_gas = sum(P)
+        P_gas = sum(x*R*T)
         D = self.D_eff(T, P_gas, gas)
         n_species = len(gas.species)
-        dx_dy = np.zeros(n_species)
+        dc_dy = np.zeros(n_species)
         for i in range(n_species):
             sum_1 = 0
             sum_2 = 0
@@ -554,8 +552,8 @@ class StefanMaxwell(PorousTransport):
                 if j != i:
                     sum_1 += x[j] / D[i][j]
                     sum_2 += mol_flux[j] / D[i][j]
-            dx_dy[i] = R * T / P_gas * (mol_flux[i] * sum_1 - x[i] * sum_2)
-        return dx_dy
+            dc_dy[i] =  (mol_flux[i] * sum_1 - x[i] * sum_2) / P_gas * R * T
+        return dc_dy
     
     def dP_dl(
         self, mol_flux: float, T: float, P: np.ndarray, gas: Mixture, delta: float
@@ -566,11 +564,11 @@ class StefanMaxwell(PorousTransport):
         Parameters
         ----------
         mol_flux : float
-            molar flux [mol/m^2]
+            molar flux [mol/m^2.s]
         T : float
             Temperature [K]
-        P : float
-            Pressure [Pa]
+        P : np.ndarray
+            Partial pressures [Pa]
         gas : Mixture
             Mixture of species
 
@@ -579,8 +577,8 @@ class StefanMaxwell(PorousTransport):
         * This function assumes: (i) no transiency (ii) binary mixture (iii) ideal gas law
         * Stefan-Maxwell model for diffusion
         """
-        def molar_fractions(y, x):
-            return self.dx_dl(y, x, mol_flux, T, P, gas)
+        def molar_fractions(y, P):
+            return self.dc_dl(P/(R*T), mol_flux, T, gas) * R * T
 
         solution = solve_ivp(molar_fractions, (0, delta), P)
         return solution.y[:, -1]
