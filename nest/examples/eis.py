@@ -8,24 +8,26 @@ from nest.constants import R
 # Defining the problem equation
 
 def resfn(t, y, yp, res, exampleCell, conditions):
-    # Numerical discretization parameters
-    n = exampleCell.elements
-    n_z = 5 # To be specified by the cell class
-    dX = exampleCell.area**0.5/exampleCell.elements
-    dY = exampleCell.area**0.5
-    dZ = 0.0001 # m - To be specified by the cell class
-    dz_f = exampleCell.electrode_fuel.delta/n_z
-    dz_a = exampleCell.electrode_air.delta/n_z
-    A_sec = dY*dZ
-
     # Properties to be specified by the cell class
     C_fuel = 1.3 # F/m2
     C_air = 100 # F/m2
     k_interface = 100 # mol/m2/s/Pa - To be specified by the cell class
+    n_z_f = 5 # To be specified by the cell class
+    n_z_a = 2 # Minimal value is two
+    dZ = 0.0001 # m - To be specified by the cell class
+
+    # Numerical discretization parameters
+    n = exampleCell.elements
+    dX = exampleCell.area**0.5/exampleCell.elements
+    dY = exampleCell.area**0.5    
+    dz_f = exampleCell.electrode_fuel.delta/n_z_f
+    dz_a = exampleCell.electrode_air.delta/n_z_a
+    A_sec = dY*dZ
 
     # Boundary conditions
     V = conditions.V * (t >= 0)
     T = conditions.T
+
     Ps_fuel = conditions.Ps_fuel().copy()
     P_fuel = np.sum(Ps_fuel)
     Ps_air = conditions.Ps_air().copy()
@@ -56,7 +58,7 @@ def resfn(t, y, yp, res, exampleCell, conditions):
             
             # Flux into porous layer
             index_c = (3+n_species_air+n_species_fuel)*n # offset
-            index_c += s*n_z + i*n_z*n_species_fuel # update
+            index_c += s*n_z_f + i*n_z_f*n_species_fuel # update
             J_surf = -k_interface*(y[index_c]-cf_x) # OBS: high flux to ensure equilibrium at the interface
 
             # Continuity - Advection - Fuel
@@ -70,45 +72,45 @@ def resfn(t, y, yp, res, exampleCell, conditions):
 
         # To-do : Create a case exception for n_z = 1 to avoid this loop and directly set Ps_fuel at the end of the porous layer for the kinetic calculation
         # Diffusion in the porous layer - Fuel
-        for z in range(n_z-1): # Forward difference finite elements
-            index_J_start = (3+n_species_air+n_species_fuel)*n + n*n_z*n_species_fuel # offset
-            index_J_start += z + i*(n_z-1)*n_species_fuel # update
-            index_J_end = (3+n_species_air+n_species_fuel)*n + n*n_z*n_species_fuel # offset
-            index_J_end += z + n_species_fuel*(n_z-1) + i*(n_z-1)*n_species_fuel # update
-            Js = y[index_J_start:index_J_end:n_z-1]
+        for z in range(n_z_f-1): # Forward difference finite elements
+            index_J_start = (3+n_species_air+n_species_fuel)*n + n*n_z_f*n_species_fuel # offset
+            index_J_start += z + i*(n_z_f-1)*n_species_fuel # update
+            index_J_end = (3+n_species_air+n_species_fuel)*n + n*n_z_f*n_species_fuel # offset
+            index_J_end += z + n_species_fuel*(n_z_f-1) + i*(n_z_f-1)*n_species_fuel # update
+            Js = y[index_J_start:index_J_end:n_z_f-1]
 
             index_c_start = (3+n_species_air+n_species_fuel)*n # offset
-            index_c_start += z + i*n_z*n_species_fuel # update
+            index_c_start += z + i*n_z_f*n_species_fuel # update
             index_c_end = (3+n_species_air+n_species_fuel)*n
-            index_c_end += z + n_species_fuel*n_z + i*n_z*n_species_fuel # update
-            cs = y[index_c_start:index_c_end:n_z]
-            cs_bottom = y[index_c_start+1:index_c_end+1:n_z]
+            index_c_end += z + n_species_fuel*n_z_f + i*n_z_f*n_species_fuel # update
+            cs = y[index_c_start:index_c_end:n_z_f]
+            cs_bottom = y[index_c_start+1:index_c_end+1:n_z_f]
             
             # Algebraic equation
             rhs = exampleCell.electrode_fuel.transport.dc_dl(cs, Js, T, exampleCell.electrode_fuel.kinetic.gas)
-            res[index_J_start:index_J_end:n_z-1] = (cs_bottom-cs)/dz_f + rhs
+            res[index_J_start:index_J_end:n_z_f-1] = (cs_bottom-cs)/dz_f + rhs
 
             # Defining Ps_fuel at the end of the porous layer for the kinetic calculation
-            if z == n_z-2:
+            if z == n_z_f-2:
                 Ps_fuel = cs_bottom*R*T
 
         # Continuity in the porous layer - Fuel
-        for z in range(n_z):
+        for z in range(n_z_f):
             for s in range(n_species_fuel):
                 # Flux going outside the volume
-                index_J = (3+n_species_air+n_species_fuel)*n + n*n_z*n_species_fuel # offset 
-                index_J += z + s*(n_z-1) + i*(n_z-1)*n_species_fuel # update
+                index_J = (3+n_species_air+n_species_fuel)*n + n*n_z_f*n_species_fuel # offset 
+                index_J += z + s*(n_z_f-1) + i*(n_z_f-1)*n_species_fuel # update
 
                 # Porous concentration
                 index_c = (3+n_species_air+n_species_fuel)*n # offset
-                index_c += z + s*n_z + i*n_z*n_species_fuel # update
+                index_c += z + s*n_z_f + i*n_z_f*n_species_fuel # update
                 c_y = y[index_c]
                     
                 if z == 0:
                     c_top = y[i+(3+s)*n] # Bulk concentration at the interface
                     J_top = -k_interface*(c_y-c_top) # High flux to ensure equilibrium at the interface
                     J_y = y[index_J]
-                elif z < n_z-1:
+                elif z < n_z_f-1:
                     J_top = y[index_J-1]
                     J_y = y[index_J]
                 else:
@@ -133,45 +135,45 @@ def resfn(t, y, yp, res, exampleCell, conditions):
         ua_left += u_ele/dZ*dX
         
         # Diffusion in the porous layer - air
-        for z in range(n_z-1): # Forward difference finite elements
-            index_J_start = (3+n_species_air+n_species_fuel)*n + n*n_z*(n_species_fuel+n_species_air) + n*(n_z-1)*n_species_fuel  # offset
-            index_J_start += z + i*(n_z-1)*n_species_air # update
-            index_J_end = (3+n_species_air+n_species_fuel)*n + n*n_z*(n_species_fuel+n_species_air) + n*(n_z-1)*n_species_fuel  # offset
-            index_J_end += z + n_species_air*(n_z-1) + i*(n_z-1)*n_species_air # update
-            Js = y[index_J_start:index_J_end:n_z-1]
+        for z in range(n_z_a-1): # Forward difference finite elements
+            index_J_start = (3+n_species_air+n_species_fuel)*n + n*n_z_f*n_species_fuel+n*n_z_a*n_species_air + n*(n_z_f-1)*n_species_fuel  # offset
+            index_J_start += z + i*(n_z_a-1)*n_species_air # update
+            index_J_end = (3+n_species_air+n_species_fuel)*n + n*n_z_f*n_species_fuel+n*n_z_a*n_species_air + n*(n_z_f-1)*n_species_fuel  # offset
+            index_J_end += z + n_species_air*(n_z_a-1) + i*(n_z_a-1)*n_species_air # update
+            Js = y[index_J_start:index_J_end:n_z_a-1]
 
-            index_c_start = (3+n_species_air+n_species_fuel)*n + n*n_z*n_species_fuel + n*(n_z-1)*n_species_fuel # offset
-            index_c_start += z + i*n_z*n_species_air # update
-            index_c_end = (3+n_species_air+n_species_fuel)*n + n*n_z*n_species_fuel + n*(n_z-1)*n_species_fuel # offset
-            index_c_end += z + n_species_air*n_z + i*n_z*n_species_air # update
-            cs = y[index_c_start:index_c_end:n_z]
-            cs_bottom = y[index_c_start+1:index_c_end+1:n_z]
+            index_c_start = (3+n_species_air+n_species_fuel)*n + n*n_z_f*n_species_fuel + n*(n_z_f-1)*n_species_fuel # offset
+            index_c_start += z + i*n_z_a*n_species_air # update
+            index_c_end = (3+n_species_air+n_species_fuel)*n + n*n_z_f*n_species_fuel + n*(n_z_f-1)*n_species_fuel # offset
+            index_c_end += z + n_species_air*n_z_a + i*n_z_a*n_species_air # update
+            cs = y[index_c_start:index_c_end:n_z_a]
+            cs_bottom = y[index_c_start+1:index_c_end+1:n_z_a]
             
             # Algebraic equation
             rhs = exampleCell.electrode_air.transport.dc_dl(cs, Js, T, exampleCell.electrode_air.kinetic.gas)
-            res[index_J_start:index_J_end:n_z-1] = (cs_bottom-cs)/dz_a + rhs
+            res[index_J_start:index_J_end:n_z_a-1] = (cs_bottom-cs)/dz_a + rhs
 
             # Defining Ps_fuel at the end of the porous layer for the kinetic calculation
-            if z == n_z-2:
+            if z == n_z_a-2:
                 Ps_air = cs_bottom*R*T
 
         # Continuity in the porous layer - air
-        for z in range(n_z):
+        for z in range(n_z_a):
             for s in range(n_species_air):
                 # Flux going outside the volume
-                index_J = (3+n_species_air+n_species_fuel)*n + n*n_z*(n_species_fuel+n_species_air) + n*(n_z-1)*n_species_fuel  # offset
-                index_J += z + s*(n_z-1) + i*(n_z-1)*n_species_air # update
+                index_J = (3+n_species_air+n_species_fuel)*n + n*n_z_f*n_species_fuel+n*n_z_a*n_species_air + n*(n_z_f-1)*n_species_fuel  # offset
+                index_J += z + s*(n_z_a-1) + i*(n_z_a-1)*n_species_air # update
                 
                 # Porous concentration
-                index_c = (3+n_species_air+n_species_fuel)*n + n*n_z*n_species_fuel + n*(n_z-1)*n_species_fuel # offset
-                index_c += z + s*n_z + i*n_z*n_species_air # update
+                index_c = (3+n_species_air+n_species_fuel)*n + n*n_z_f*n_species_fuel + n*(n_z_f-1)*n_species_fuel # offset
+                index_c += z + s*n_z_a + i*n_z_a*n_species_air # update
                 c_y = y[index_c]
                     
                 if z == 0:
                     c_top = y[i+(3+s+n_species_fuel)*n] # Bulk concentration at the interface
                     J_top = -k_interface*(c_y-c_top) # High flux to ensure equilibrium at the interface
                     J_y = y[index_J]
-                elif z < n_z-1:
+                elif z < n_z_a-1:
                     J_top = y[index_J-1]
                     J_y = y[index_J]
                 else:
@@ -267,8 +269,9 @@ def eis():
     n_elements = exampleCell.elements
     n_species_fuel = len(conditions.n_fuel)
     n_species_air = len(conditions.n_air)
-    n_porous = 5
-    n_variables = (3+n_species_fuel+n_species_air+n_porous*(n_species_fuel+n_species_air)+(n_porous-1)*(n_species_fuel+n_species_air))*n_elements
+    n_porous_f = 5
+    n_porous_a = 2
+    n_variables = ((3+n_species_fuel+n_species_air+n_porous_f*n_species_fuel+n_porous_a*n_species_air)+(n_porous_f-1)*(n_species_fuel)+(n_porous_a-1)*(n_species_air))*n_elements
 
     y0 = np.zeros(n_variables)
     yp0 = np.zeros(n_variables)
@@ -280,16 +283,16 @@ def eis():
 
     index = (3+n_species_air+n_species_fuel)*n_elements
     index_f = index
-    for j in range(n_porous*n_species_fuel*n_elements):
+    for j in range(n_porous_f*n_species_fuel*n_elements):
         y0[index+j] = conditions.P/(R*conditions.T)*0.5
     
-    index = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous*n_species_fuel + n_elements*(n_porous-1)*n_species_fuel
-    for j in range(n_porous*n_species_air*n_elements):
+    index = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel + n_elements*(n_porous_f-1)*n_species_fuel
+    for j in range(n_porous_a*n_species_air*n_elements):
         y0[index+j] = conditions.P/(R*conditions.T)*1
     
     voltage_alg = [i+2*exampleCell.elements for i in range(exampleCell.elements)]
-    flux_alg_f = [i+(3+n_species_air+n_species_fuel+n_porous*n_species_fuel)*n_elements for i in range((n_porous-1)*n_species_fuel*n_elements)]
-    flux_alg_a = [i+(3+n_species_air+n_species_fuel+n_porous*(n_species_fuel+n_species_air)+(n_porous-1)*n_species_fuel)*n_elements for i in range((n_porous-1)*n_species_air*n_elements)]
+    flux_alg_f = [i+(3+n_species_air+n_species_fuel+n_porous_f*n_species_fuel)*n_elements for i in range((n_porous_f-1)*n_species_fuel*n_elements)]
+    flux_alg_a = [i+(3+n_species_air+n_species_fuel+n_porous_f*n_species_fuel+n_porous_a*n_species_air+(n_porous_f-1)*n_species_fuel)*n_elements for i in range((n_porous_a-1)*n_species_air*n_elements)]
 
     solver = IDA(
         lambda t, y, yp, res: resfn(t, y, yp, res, exampleCell, conditions),
@@ -298,7 +301,7 @@ def eis():
     )
 
     # Solve from t=0 to t=0.1 s
-    tspan = [0.0, 0.1]
+    tspan = [0.0, 1]
 
     start_time = process_time()
     sol = solver.solve(tspan, y0, yp0)
