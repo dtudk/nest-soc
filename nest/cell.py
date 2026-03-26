@@ -283,7 +283,7 @@ class Cell:
             current density [A/cm^2]
         """
         return (
-            boundary.Ps_fuel()
+            boundary.Ps_air()
             + (boundary.n_air + self.dn_air(j))
             / sum(boundary.n_air + self.dn_air(j))
             * boundary.P

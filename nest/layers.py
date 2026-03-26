@@ -541,8 +541,10 @@ class StefanMaxwell(PorousTransport):
         * This function assumes: (i) no transiency (ii) multi-component mixture (iii) ideal gas law
         * Note that the molar flux in the diffusion equations is equal to -mol_flux
         """
-        P_gas = sum(x*R*T)
+        P_gas = np.sum(x)*R*T
         D = self.D_eff(T, P_gas, gas)
+
+        """        
         n_species = len(gas.species)
         dc_dy = np.zeros(n_species)
         for i in range(n_species):
@@ -553,7 +555,21 @@ class StefanMaxwell(PorousTransport):
                     sum_1 += x[j] / D[i][j]
                     sum_2 += mol_flux[j] / D[i][j]
             dc_dy[i] =  (mol_flux[i] * sum_1 - x[i] * sum_2) / P_gas * R * T
-        return dc_dy
+        """
+        
+        if isinstance(gas.species, Specie):
+            return mol_flux / D / P_gas * R * T
+        else:
+            invD = np.zeros_like(D, dtype=float)
+            offdiag = ~np.eye(D.shape[0], dtype=bool)
+            np.divide(1.0, D, out=invD, where=offdiag)
+
+            sum_1 = invD @ x
+            sum_2 = invD @ mol_flux
+
+            dc_dy = (mol_flux * sum_1 - x * sum_2) / P_gas * R * T
+            
+            return dc_dy
     
     def dP_dl(
         self, mol_flux: float, T: float, P: np.ndarray, gas: Mixture, delta: float
