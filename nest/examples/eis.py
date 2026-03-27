@@ -7,6 +7,16 @@ from nest import properties, layers, cell
 from nest.constants import R,F,P_0
 # Defining the problem equation
 
+def voltage(t,exampleCell,conditions):
+    V_step = 1e-3 # V
+    tau = 1e-7 # s
+    offset = 0.001 # s
+    if t < offset:
+        return exampleCell.V_nerst(conditions.T,conditions.Ps_fuel(),conditions.Ps_air())
+    else:
+        return exampleCell.V_nerst(conditions.T,conditions.Ps_fuel(),conditions.Ps_air()) + V_step*(1-np.exp(-(t-offset)/tau))
+
+
 def resfn(t, y, yp, res, exampleCell, conditions):
     # Properties to be specified by the cell class
     C_fuel = 1.3 # F/m2
@@ -25,15 +35,28 @@ def resfn(t, y, yp, res, exampleCell, conditions):
     A_sec = dY*dZ
 
     # Boundary conditions
-    V = conditions.V * (t >= 0)
+    #V = conditions.V * (t >= 0)
+    V = voltage(t,exampleCell,conditions)
     T = conditions.T
 
-    Ps_fuel = conditions.Ps_fuel()
+    Ps_fuel = conditions.Ps_fuel().copy()
     P_fuel = np.sum(Ps_fuel)
-    Ps_air = conditions.Ps_air()
+    Ps_air = conditions.Ps_air().copy()
     P_air = np.sum(Ps_air)
     uf_left = np.sum(conditions.n_fuel)*(R*T/np.sum(Ps_fuel))/A_sec
     ua_left = np.sum(conditions.n_air)*(R*T/np.sum(Ps_air))/A_sec        
+
+
+    
+    #V = exampleCell.V_nerst(T,conditions.Ps_fuel(),conditions.Ps_air()) + V_step * (t>0.01)
+
+    """
+    if t <= 0.01:
+        V = exampleCell.V_nerst(T,conditions.Ps_fuel(),conditions.Ps_air())
+    else:
+        V = exampleCell.V_nerst(T,conditions.Ps_fuel(),conditions.Ps_air()) + (1-np.exp(-t/tau))*V_step
+    """
+    
     c_bc_fuel = Ps_fuel/(R*T)
     c_bc_air = Ps_air/(R*T)
 
@@ -49,7 +72,7 @@ def resfn(t, y, yp, res, exampleCell, conditions):
     V_nerst_OCV = exampleCell.Vt_nerst(T)
 
     for i in range(n):
-        j_segment = y[i+2*n]
+        j_segment = y[i+2*n]*10000
         
         # Continuity in the channel - Fuel
         source_f = exampleCell.electrode_fuel.kinetic.mol_flux(j_segment)
@@ -288,6 +311,7 @@ def eis():
         y0[i+(3+2)*n_elements] = conditions.P/(R*conditions.T)*1
 
     index = (3+n_species_air+n_species_fuel)*n_elements
+    index_f = index
     for j in range(n_porous_f*n_species_fuel*n_elements):
         y0[index+j] = conditions.P/(R*conditions.T)*0.5
     
@@ -380,12 +404,13 @@ def eis():
         lambda t, y, yp, res: resfn(t, y, yp, res, exampleCell, conditions),
         algebraic_idx=np.concatenate((voltage_alg, flux_alg_f, flux_alg_a)),
         calc_initcond='yp0',
-    #    linsolver = 'sparse',
-    #    sparsity = sparsity
+        #linsolver = 'sparse',
+        #sparsity = sparsity,
+        #nthreads = -1,
     )
 
     # Solve from t=0 to t=0.1 s
-    tspan = [0.0, 0.1]
+    tspan = [0.0, 1]
 
     start_time = perf_counter()
     sol = solver.solve(tspan, y0, yp0)
@@ -394,24 +419,27 @@ def eis():
     print(f"Computation time : {elapsed_time:.6f} seconds")
 
     j_avg = np.mean(sol.y[:,2*exampleCell.elements:3*exampleCell.elements], axis=1)
-    plt.plot(sol.t,j_avg, label='Transient - j')
-    
+    plt.plot(sol.t-1e-3,j_avg*10000, label='Transient - j')
+    plt.xscale('symlog', linthresh=1e-6)
+    np.savetxt('eis_solution.csv', np.transpose([sol.t,-j_avg]), delimiter=',')
     #for i in range(n_porous):
     #    plt.plot(sol.t,sol.y[:,index+i+(n_porous-1)*n_species_air*n_elements]*R*conditions.T,label=f'c_{i}')
     
-    #for i in range(n_porous*2):
-    #    plt.plot(sol.t,sol.y[:,index+i]*R*conditions.T,label=f'c_{i}')
-    #for i in range(n_elements*2):
-    #    plt.plot(sol.t,sol.y[:,i+3*n_elements]*R*conditions.T,label=f'c_{i}')
+    #for i in range(n_porous_f-4,n_porous_f):
+    #    plt.plot(sol.t,sol.y[:,index_f+i]*R*conditions.T,label=f'c_{i} porous')
+        #np.savetxt('eis_solution2.csv', np.transpose([sol.t,sol.y[:,index_f+i]*R*conditions.T]), delimiter=',')
+    #for i in range(1):
+    #    plt.plot(sol.t,sol.y[:,i+3*n_elements]*R*conditions.T,label=f'c_{i} bulk')
+    #    np.savetxt('eis_solution3.csv', np.transpose([sol.t,sol.y[:,i+3*n_elements]*R*conditions.T]), delimiter=',')
     #for i in range(n_elements):
     #    plt.plot(sol.t,sol.y[:,i+(3+2)*n_elements]*R*conditions.T,label=f'c_{i}')
     #plt.plot(sol.t,sol.y[:,3*n_elements])
 
     # Steady-state
-    solutions = exampleCell.solve_for_voltage(conditions)
-    current = np.mean(solutions[1])
+    #solutions = exampleCell.solve_for_voltage(conditions)
+    #current = np.mean(solutions[1])
     #P_H2_ss = [conditions.P*solutions[4][i]/(solutions[4][i]+solutions[5][i]) for i in range(n_elements)]
     #print(P_H2_ss)
-    plt.plot(sol.t,[current for i in range(len(sol.t))], label='Steady-state - j')
+    #plt.plot(sol.t,[current for i in range(len(sol.t))], label='Steady-state - j')
     plt.legend()
     return plt.show()
