@@ -166,6 +166,23 @@ class Cell:
             self.electrode_fuel.kinetic.V_nerst_half(T, Ps_fuel)
             + self.electrode_air.kinetic.V_nerst_half(T, Ps_air)
         )
+    def Vt_nerst(self, T: float) -> float:
+        """
+        Thermodynamic voltage (reversible limit) [V]
+
+        Parameters
+        ----------
+        T : float
+            Temperature [K]
+        Ps_fuel : np.ndarray
+            Partial pressure for fuel side [Pa]
+        Ps_air : np.ndarray
+            Partial pressure for air side [Pa]
+        """
+        return -(
+            self.electrode_fuel.kinetic.Vt_nerst_half(T)
+            + self.electrode_air.kinetic.Vt_nerst_half(T)
+        )
 
     def V(
         self, j: float, T: float, Ps_fuel: np.ndarray, Ps_air: np.ndarray, **kwargs

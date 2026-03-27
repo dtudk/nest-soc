@@ -116,7 +116,22 @@ class Kinetic:
             return self.nu[0] * self.gas.species.g(T, Ps[0]) / (self.n_e * F)
         else:
             return sum(
-                [self.nu[i] * gas.g(T, Ps[i]) for i, gas in enumerate(self.gas.species)]
+                nu_i * gas_i.g(T, Ps_i) for nu_i, gas_i, Ps_i in zip(self.nu, self.gas.species, Ps)
+            ) / (self.n_e * F)
+    def Vt_nerst_half(self, T):
+        """
+        Voltage for electrode side reaction at reference pressure [V]
+
+        Parameters
+        ----------
+        T : float
+            Temperature [K]
+        """
+        if isinstance(self.gas.species, Specie):
+            return self.nu[0] * self.gas.species.gT(T) / (self.n_e * F)
+        else:
+            return sum(
+                nu_i * gas_i.gT(T) for nu_i, gas_i in zip(self.nu, self.gas.species)
             ) / (self.n_e * F)
 
     def V(self, j: float, T: float, j0: float) -> float:
@@ -521,7 +536,7 @@ class StefanMaxwell(PorousTransport):
                 )
             )
         
-    def dc_dl(self, x:np.ndarray, mol_flux: np.ndarray, T: float, gas: Mixture) -> np.ndarray:
+    def dc_dl(self, x:np.ndarray, mol_flux: np.ndarray, D:np.ndarray, T: float, gas: Mixture) -> np.ndarray:
         """
         Molar concentration gradient along layer thickness [mol/m^4]
         
@@ -542,8 +557,7 @@ class StefanMaxwell(PorousTransport):
         * Note that the molar flux in the diffusion equations is equal to -mol_flux
         """
         P_gas = np.sum(x)*R*T
-        D = self.D_eff(T, P_gas, gas)
-
+        
         """        
         n_species = len(gas.species)
         dc_dy = np.zeros(n_species)
@@ -593,8 +607,10 @@ class StefanMaxwell(PorousTransport):
         * This function assumes: (i) no transiency (ii) binary mixture (iii) ideal gas law
         * Stefan-Maxwell model for diffusion
         """
+        D = self.D_eff(T, sum(P), gas)
+
         def molar_fractions(y, P):
-            return self.dc_dl(P/(R*T), mol_flux, T, gas) * R * T
+            return self.dc_dl(P/(R*T), mol_flux, D,  T, gas) * R * T
 
         solution = solve_ivp(molar_fractions, (0, delta), P)
         return solution.y[:, -1]
