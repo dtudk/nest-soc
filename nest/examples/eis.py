@@ -11,11 +11,11 @@ def voltage(t,exampleCell,conditions):
     V_step = 1e-3 # V
     tau = 1e-7 # s
     offset = 0.001 # s
+    # OBS: The offset is required because of the initial condition calculation made by the solver.
     if t < offset:
         return exampleCell.V_nerst(conditions.T,conditions.Ps_fuel(),conditions.Ps_air())
     else:
         return exampleCell.V_nerst(conditions.T,conditions.Ps_fuel(),conditions.Ps_air()) + V_step*(1-np.exp(-(t-offset)/tau))
-
 
 def resfn(t, y, yp, res, exampleCell, conditions):
     # Properties to be specified by the cell class
@@ -40,25 +40,14 @@ def resfn(t, y, yp, res, exampleCell, conditions):
     T = conditions.T
 
     Ps_fuel = conditions.Ps_fuel().copy()
-    P_fuel = np.sum(Ps_fuel)
     Ps_air = conditions.Ps_air().copy()
+    P_fuel = np.sum(Ps_fuel)
     P_air = np.sum(Ps_air)
     uf_left = np.sum(conditions.n_fuel)*(R*T/np.sum(Ps_fuel))/A_sec
-    ua_left = np.sum(conditions.n_air)*(R*T/np.sum(Ps_air))/A_sec        
+    ua_left = np.sum(conditions.n_air)*(R*T/np.sum(Ps_air))/A_sec 
 
-
-    
-    #V = exampleCell.V_nerst(T,conditions.Ps_fuel(),conditions.Ps_air()) + V_step * (t>0.01)
-
-    """
-    if t <= 0.01:
-        V = exampleCell.V_nerst(T,conditions.Ps_fuel(),conditions.Ps_air())
-    else:
-        V = exampleCell.V_nerst(T,conditions.Ps_fuel(),conditions.Ps_air()) + (1-np.exp(-t/tau))*V_step
-    """
-    
-    c_bc_fuel = Ps_fuel/(R*T)
-    c_bc_air = Ps_air/(R*T)
+    c_bc_fuel = conditions.Ps_fuel()/(R*T)
+    c_bc_air = conditions.Ps_air()/(R*T)
 
     # Misc
     n_species_fuel = len(Ps_fuel)
@@ -70,12 +59,22 @@ def resfn(t, y, yp, res, exampleCell, conditions):
     D_eff_f = exampleCell.electrode_fuel.transport.D_eff(T, P_fuel, exampleCell.electrode_fuel.kinetic.gas)
     D_eff_a = exampleCell.electrode_air.transport.D_eff(T, P_air, exampleCell.electrode_air.kinetic.gas)
     V_nerst_OCV = exampleCell.Vt_nerst(T)
+    n_e = exampleCell.electrode_fuel.kinetic.n_e
+    nu_f = exampleCell.electrode_fuel.kinetic.nu
+    nu_a = exampleCell.electrode_air.kinetic.nu
+    k_mol_f = nu_f/(n_e*F)
+    k_mol_a = nu_a/(n_e*F)
+    R_ohm = sum(layer.delta/layer.conductivity.sigma(T) for layer in exampleCell.electrolyte)
+    j0T_f = exampleCell.electrode_fuel.kinetic.gamma*T**exampleCell.electrode_fuel.kinetic.theta*np.exp(-exampleCell.electrode_fuel.kinetic.E_act/(R*T))
+    j0T_a = exampleCell.electrode_air.kinetic.gamma*T**exampleCell.electrode_air.kinetic.theta*np.exp(-exampleCell.electrode_air.kinetic.E_act/(R*T))
+    p_f = exampleCell.electrode_fuel.kinetic.p
+    p_a = exampleCell.electrode_air.kinetic.p
 
     for i in range(n):
-        j_segment = y[i+2*n]*10000
+        j_segment = y[i+2*n]*10000 # Lowering the order of magnitude for numerical stability.
         
         # Continuity in the channel - Fuel
-        source_f = exampleCell.electrode_fuel.kinetic.mol_flux(j_segment)
+        source_f = k_mol_f*j_segment
         u_ele = R*T/P_fuel*np.sum(source_f)
         uf_x = uf_left + u_ele/dZ*dX
         for s in range(n_species_fuel):
@@ -147,7 +146,7 @@ def resfn(t, y, yp, res, exampleCell, conditions):
                 res[index_c] = yp[index_c]*epsilon_f + (J_y-J_top)/dz_f    
 
         # Continuity in the channel - Air
-        source_a = exampleCell.electrode_air.kinetic.mol_flux(j_segment)
+        source_a = k_mol_a*j_segment
         u_ele = R*T/P_air*np.sum(source_a)
         ua_x = ua_left + u_ele/dZ*dX
         for s in range(n_species_air):
@@ -210,21 +209,97 @@ def resfn(t, y, yp, res, exampleCell, conditions):
                 res[index_c] = yp[index_c]*epsilon_a + (J_y-J_top)/dz_a   
 
         # Fuel electrode overpotential
-        j0 = exampleCell.electrode_fuel.kinetic.j_0(T,Ps_fuel)
+        j0 = j0T_f*np.prod((Ps_fuel/P_0)**p_f)
         eta_f = y[i]
         res[i] = C_fuel*yp[i] + exampleCell.electrode_fuel.kinetic.j(eta_f,T,j0) - j_segment
 
         # Air electrode overpotential
-        j0 = exampleCell.electrode_air.kinetic.j_0(T,Ps_air)
+        j0 = j0T_a*np.prod((Ps_air/P_0)**p_a)
         eta_a = y[i+n]
         res[i+n] = C_air*yp[i+n] + exampleCell.electrode_air.kinetic.j(eta_a,T,j0) - j_segment
 
         # Cell voltage
-        eta_el = 0
-        for layer in exampleCell.electrolyte:
-            eta_el += layer.V(j_segment, T)
-        eta_conc = R*T/(exampleCell.electrode_fuel.kinetic.n_e*F)*np.log(np.prod((Ps_fuel/P_0)**exampleCell.electrode_fuel.kinetic.nu*(P_0/Ps_air)**exampleCell.electrode_air.kinetic.nu))
+        eta_el = R_ohm*j_segment
+        eta_conc = R*T/(n_e*F)*np.log(np.prod((Ps_fuel/P_0)**nu_f*(P_0/Ps_air)**nu_a))
         res[i+2*n] = V - (V_nerst_OCV - eta_f - eta_a - eta_el - eta_conc)
+
+def sparsity_pattern(n_elements, n_species_fuel, n_species_air, n_porous_f, n_porous_a):
+    n_variables = ((3+n_species_fuel+n_species_air+n_porous_f*n_species_fuel+n_porous_a*n_species_air)+(n_porous_f-1)*(n_species_fuel)+(n_porous_a-1)*(n_species_air))*n_elements
+    sparsity = np.ones((n_variables, n_variables))
+
+    def set_zero_block(sparsity, i,j ):
+        sparsity[i,j] = 0
+        sparsity[i+n_elements,j] = 0
+        sparsity[i+2*n_elements,j] = 0
+        for k in range(n_species_fuel):
+            sparsity[i+(3+k)*n_elements,j] = 0
+        for k in range(n_species_air):
+            sparsity[i+(3+n_species_fuel+k)*n_elements,j] = 0
+        for z in range(n_porous_f):
+            for s in range(n_species_fuel):
+                index_c_start = (3+n_species_air+n_species_fuel)*n_elements # offset
+                index_c_start += z + s*n_porous_f + i*n_porous_f*n_species_fuel # update
+                sparsity[index_c_start,j] = 0
+        for z in range(n_porous_f-1):
+            for s in range(n_species_fuel):
+                index_J = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel # offset
+                index_J += z + s*(n_porous_f-1) + i*(n_porous_f-1)*n_species_fuel # update
+                sparsity[index_J,j] = 0
+        for z in range(n_porous_a):
+            for s in range(n_species_air):
+                index_c = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel + n_elements*(n_porous_f-1)*n_species_fuel # offset
+                index_c += z + s*n_porous_a + i*n_porous_a*n_species_air # update
+                sparsity[index_c,j] = 0
+        for z in range(n_porous_a-1):
+            for s in range(n_species_air):
+                index_J = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel+n_elements*n_porous_a*n_species_air + n_elements*(n_porous_f-1)*n_species_fuel  # offset
+                index_J += z + s*(n_porous_a-1) + i*(n_porous_a-1)*n_species_air # update
+                sparsity[index_J,j] = 0
+        return sparsity
+    
+    for i in range(n_elements):
+        for j in range(n_elements):
+            if j>i:
+                set_zero_block(sparsity, i,j)
+        for j in range(n_elements,2*n_elements):
+            if j>i+n_elements:
+                set_zero_block(sparsity, i,j)
+        for j in range(2*n_elements, 3*n_elements):
+            if j>i+2*n_elements:
+                set_zero_block(sparsity, i,j)
+        for s in range(n_species_fuel):
+            for j in range(3*n_elements, (3+s)*n_elements):
+                if j>i+(3+s)*n_elements:
+                    set_zero_block(sparsity, i,j)
+        for s in range(n_species_air):
+            for j in range((3+n_species_fuel)*n_elements, (3+n_species_fuel+s)*n_elements):
+                if j>i+(3+n_species_fuel+s)*n_elements:
+                    set_zero_block(sparsity, i,j)
+        for z in range(n_porous_f):
+            for s in range(n_species_fuel):
+                index_c_start = (3+n_species_air+n_species_fuel)*n_elements # offset
+                for j in range(index_c_start, index_c_start+n_porous_f*n_species_fuel):
+                    if j>index_c_start + z + s*n_porous_f + n_porous_f*n_species_fuel:
+                        set_zero_block(sparsity, i,j)
+        for z in range(n_porous_f-1):
+            for s in range(n_species_fuel):
+                index_J = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel # offset
+                for j in range(index_J, index_J+(n_porous_f-1)*n_species_fuel):
+                    if j>index_J + z + s*(n_porous_f-1) + (n_porous_f-1)*n_species_fuel:
+                        set_zero_block(sparsity, i,j)
+        for z in range(n_porous_a):
+            for s in range(n_species_air):
+                index_c = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel + n_elements*(n_porous_f-1)*n_species_fuel # offset
+                for j in range(index_c, index_c+n_porous_a*n_species_air):
+                    if j>index_c + z + s*n_porous_a + n_porous_a*n_species_air:
+                        set_zero_block(sparsity, i,j)
+        for z in range(n_porous_a-1):
+            for s in range(n_species_air):
+                index_J = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel+n_elements*n_porous_a*n_species_air + n_elements*(n_porous_f-1)*n_species_fuel  # offset
+                for j in range(index_J, index_J+(n_porous_a-1)*n_species_air):
+                    if j>index_J + z + s*(n_porous_a-1) + (n_porous_a-1)*n_species_air:
+                        set_zero_block(sparsity, i,j)
+    return sparsity
 
 def eis():
     fuel_mix = properties.Mixture(
@@ -324,89 +399,13 @@ def eis():
     flux_alg_f = [i+(3+n_species_air+n_species_fuel+n_porous_f*n_species_fuel)*n_elements for i in range((n_porous_f-1)*n_species_fuel*n_elements)]
     flux_alg_a = [i+(3+n_species_air+n_species_fuel+n_porous_f*n_species_fuel+n_porous_a*n_species_air+(n_porous_f-1)*n_species_fuel)*n_elements for i in range((n_porous_a-1)*n_species_air*n_elements)]
 
-    # Jacobian sparsity pattern
-    sparsity = np.ones((n_variables, n_variables))
-
-    def set_zero_block(sparsity, i,j ):
-        sparsity[i,j] = 0
-        sparsity[i+n_elements,j] = 0
-        sparsity[i+2*n_elements,j] = 0
-        for k in range(n_species_fuel):
-            sparsity[i+(3+k)*n_elements,j] = 0
-        for k in range(n_species_air):
-            sparsity[i+(3+n_species_fuel+k)*n_elements,j] = 0
-        for z in range(n_porous_f):
-            for s in range(n_species_fuel):
-                index_c_start = (3+n_species_air+n_species_fuel)*n_elements # offset
-                index_c_start += z + s*n_porous_f + i*n_porous_f*n_species_fuel # update
-                sparsity[index_c_start,j] = 0
-        for z in range(n_porous_f-1):
-            for s in range(n_species_fuel):
-                index_J = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel # offset
-                index_J += z + s*(n_porous_f-1) + i*(n_porous_f-1)*n_species_fuel # update
-                sparsity[index_J,j] = 0
-        for z in range(n_porous_a):
-            for s in range(n_species_air):
-                index_c = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel + n_elements*(n_porous_f-1)*n_species_fuel # offset
-                index_c += z + s*n_porous_a + i*n_porous_a*n_species_air # update
-                sparsity[index_c,j] = 0
-        for z in range(n_porous_a-1):
-            for s in range(n_species_air):
-                index_J = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel+n_elements*n_porous_a*n_species_air + n_elements*(n_porous_f-1)*n_species_fuel  # offset
-                index_J += z + s*(n_porous_a-1) + i*(n_porous_a-1)*n_species_air # update
-                sparsity[index_J,j] = 0
-        return sparsity
-    
-    for i in range(n_elements):
-        for j in range(n_elements):
-            if j>i:
-                set_zero_block(sparsity, i,j)
-        for j in range(n_elements,2*n_elements):
-            if j>i+n_elements:
-                set_zero_block(sparsity, i,j)
-        for j in range(2*n_elements, 3*n_elements):
-            if j>i+2*n_elements:
-                set_zero_block(sparsity, i,j)
-        for s in range(n_species_fuel):
-            for j in range(3*n_elements, (3+s)*n_elements):
-                if j>i+(3+s)*n_elements:
-                    set_zero_block(sparsity, i,j)
-        for s in range(n_species_air):
-            for j in range((3+n_species_fuel)*n_elements, (3+n_species_fuel+s)*n_elements):
-                if j>i+(3+n_species_fuel+s)*n_elements:
-                    set_zero_block(sparsity, i,j)
-        for z in range(n_porous_f):
-            for s in range(n_species_fuel):
-                index_c_start = (3+n_species_air+n_species_fuel)*n_elements # offset
-                for j in range(index_c_start, index_c_start+n_porous_f*n_species_fuel):
-                    if j>index_c_start + z + s*n_porous_f + n_porous_f*n_species_fuel:
-                        set_zero_block(sparsity, i,j)
-        for z in range(n_porous_f-1):
-            for s in range(n_species_fuel):
-                index_J = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel # offset
-                for j in range(index_J, index_J+(n_porous_f-1)*n_species_fuel):
-                    if j>index_J + z + s*(n_porous_f-1) + (n_porous_f-1)*n_species_fuel:
-                        set_zero_block(sparsity, i,j)
-        for z in range(n_porous_a):
-            for s in range(n_species_air):
-                index_c = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel + n_elements*(n_porous_f-1)*n_species_fuel # offset
-                for j in range(index_c, index_c+n_porous_a*n_species_air):
-                    if j>index_c + z + s*n_porous_a + n_porous_a*n_species_air:
-                        set_zero_block(sparsity, i,j)
-        for z in range(n_porous_a-1):
-            for s in range(n_species_air):
-                index_J = (3+n_species_air+n_species_fuel)*n_elements + n_elements*n_porous_f*n_species_fuel+n_elements*n_porous_a*n_species_air + n_elements*(n_porous_f-1)*n_species_fuel  # offset
-                for j in range(index_J, index_J+(n_porous_a-1)*n_species_air):
-                    if j>index_J + z + s*(n_porous_a-1) + (n_porous_a-1)*n_species_air:
-                        set_zero_block(sparsity, i,j)
-            
+    # Jacobian sparsity pattern        
     solver = IDA(
         lambda t, y, yp, res: resfn(t, y, yp, res, exampleCell, conditions),
         algebraic_idx=np.concatenate((voltage_alg, flux_alg_f, flux_alg_a)),
         calc_initcond='yp0',
-        #linsolver = 'sparse',
-        #sparsity = sparsity,
-        #nthreads = -1,
+        atol=1e-9,
+        rtol=1e-6,
     )
 
     # Solve from t=0 to t=0.1 s
@@ -419,9 +418,12 @@ def eis():
     print(f"Computation time : {elapsed_time:.6f} seconds")
 
     j_avg = np.mean(sol.y[:,2*exampleCell.elements:3*exampleCell.elements], axis=1)
-    plt.plot(sol.t-1e-3,j_avg*10000, label='Transient - j')
-    plt.xscale('symlog', linthresh=1e-6)
-    np.savetxt('eis_solution.csv', np.transpose([sol.t,-j_avg]), delimiter=',')
+    #plt.plot(sol.t,j_avg*10000, label='Transient - j')
+    plt.plot(sol.t[1:]-1e-3,j_avg[1:]*10000, label='Transient - j')
+    plt.xscale('symlog', linthresh=1e-10)
+    plt.grid()
+    #np.savetxt('eis_solution.csv', np.transpose([sol.t,-j_avg]), delimiter=',')
+
     #for i in range(n_porous):
     #    plt.plot(sol.t,sol.y[:,index+i+(n_porous-1)*n_species_air*n_elements]*R*conditions.T,label=f'c_{i}')
     
@@ -438,8 +440,8 @@ def eis():
     # Steady-state
     #solutions = exampleCell.solve_for_voltage(conditions)
     #current = np.mean(solutions[1])
+    #plt.plot(sol.t,[current for i in range(len(sol.t))], label='Steady-state - j')
     #P_H2_ss = [conditions.P*solutions[4][i]/(solutions[4][i]+solutions[5][i]) for i in range(n_elements)]
     #print(P_H2_ss)
-    #plt.plot(sol.t,[current for i in range(len(sol.t))], label='Steady-state - j')
-    plt.legend()
+    #plt.legend()
     return plt.show()
