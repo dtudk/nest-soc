@@ -59,6 +59,7 @@ class Kinetic:
         p=np.array([0]),
         theta=1,
         E_act=0,
+        C = 1E-5
     ):
         # Related to reaction balance
         self.gas = gas
@@ -71,6 +72,7 @@ class Kinetic:
         self.p = p
         self.theta = theta
         self.E_act = E_act
+        self.C = C
 
     def j_0(self, T: float, Ps: np.ndarray) -> float:
         """
@@ -101,7 +103,7 @@ class Kinetic:
         """
         return self.nu * j / (self.n_e * F)
 
-    def V_nerst_half(self, T, Ps):
+    def V_nernst_half(self, T, Ps):
         """
         Voltage for electrode side reaction [V]
 
@@ -118,7 +120,7 @@ class Kinetic:
             return sum(
                 nu_i * gas_i.g(T, Ps_i) for nu_i, gas_i, Ps_i in zip(self.nu, self.gas.species, Ps)
             ) / (self.n_e * F)
-    def Vt_nerst_half(self, T):
+    def Vt_nernst_half(self, T):
         """
         Voltage for electrode side reaction at reference pressure [V]
 
@@ -632,6 +634,8 @@ class Layer:
         flags if degradation for polarization resistance is active
     ohm_deg : bool, optional
         flags if degradation for ohmic resistance is active
+    elements : int, optional
+        number of elements for spatial discretization of layer
     """
 
     def __init__(
@@ -641,12 +645,14 @@ class Layer:
         conductivity=Conductivity(),
         transport=PorousTransport(),
         degradation=NoDegradation(),
+        elements=2,
     ):
         self.delta = delta
         self.kinetic = kinetic
         self.conductivity = conductivity
         self.transport = transport
         self.degradation = degradation
+        self.elements = elements
 
     def V_ohm(self, j: float, T: float, **kwargs) -> float:
         """
