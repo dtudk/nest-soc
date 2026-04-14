@@ -372,7 +372,7 @@ class NickelAgglomeration(Degradation):
         # Rate equation
         k = (
             self.alpha
-            / 8
+            / 16
             * self.psi_ed
             / (1 - self.psi_ed)
             / A_el

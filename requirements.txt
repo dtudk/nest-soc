@@ -2,3 +2,4 @@ numpy>=1.24
 scipy>=1.10
 matplotlib>=3.7
 pandas>=2.1
+scikit-sundae>=1.1.2

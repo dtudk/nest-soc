@@ -59,6 +59,7 @@ class Kinetic:
         p=np.array([0]),
         theta=1,
         E_act=0,
+        C = 1E-5
     ):
         # Related to reaction balance
         self.gas = gas
@@ -71,6 +72,7 @@ class Kinetic:
         self.p = p
         self.theta = theta
         self.E_act = E_act
+        self.C = C
 
     def j_0(self, T: float, Ps: np.ndarray) -> float:
         """
@@ -101,7 +103,7 @@ class Kinetic:
         """
         return self.nu * j / (self.n_e * F)
 
-    def V_nerst_half(self, T, Ps):
+    def V_nernst_half(self, T, Ps):
         """
         Voltage for electrode side reaction [V]
 
@@ -116,7 +118,22 @@ class Kinetic:
             return self.nu[0] * self.gas.species.g(T, Ps[0]) / (self.n_e * F)
         else:
             return sum(
-                [self.nu[i] * gas.g(T, Ps[i]) for i, gas in enumerate(self.gas.species)]
+                nu_i * gas_i.g(T, Ps_i) for nu_i, gas_i, Ps_i in zip(self.nu, self.gas.species, Ps)
+            ) / (self.n_e * F)
+    def Vt_nernst_half(self, T):
+        """
+        Voltage for electrode side reaction at reference pressure [V]
+
+        Parameters
+        ----------
+        T : float
+            Temperature [K]
+        """
+        if isinstance(self.gas.species, Specie):
+            return self.nu[0] * self.gas.species.gT(T) / (self.n_e * F)
+        else:
+            return sum(
+                nu_i * gas_i.gT(T) for nu_i, gas_i in zip(self.nu, self.gas.species)
             ) / (self.n_e * F)
 
     def V(self, j: float, T: float, j0: float) -> float:
@@ -329,7 +346,7 @@ class PorousTransport:
 
     def D_knudsen(self, T: float, specie: Specie) -> float:
         """
-        Knudsen diffusion coefficient [m^2/s^2]
+        Knudsen diffusion coefficient [m^2/s]
 
         Parameters
         ----------
@@ -385,7 +402,7 @@ class BinaryFick(PorousTransport):
 
     def D_eff(self, T: float, P: float, gas: Mixture) -> np.ndarray:
         """
-        Effective binary diffusivity [m^2/s^2]
+        Effective binary diffusivity [m^2/s]
 
         Parameters
         ----------
@@ -520,7 +537,42 @@ class StefanMaxwell(PorousTransport):
                     ]
                 )
             )
+        
+    def dc_dl(self, x:np.ndarray, mol_flux: np.ndarray, D:np.ndarray, T: float, gas: Mixture) -> np.ndarray:
+        """
+        Molar concentration gradient along layer thickness [mol/m^4]
+        
+        Parameters
+        ----------
+        x : numpy.ndarray
+            Molar concentrations along layer thickness [Pa]
+        mol_flux : float
+            molar flux [mol/m^2.s]
+        T : float
+            Temperature [K]
+        gas : Mixture
+            Mixture of species
+        
+        Notes
+        -----
+        * This function assumes: (i) no transiency (ii) multi-component mixture (iii) ideal gas law
+        * Note that the molar flux in the diffusion equations is equal to -mol_flux
+        """
+        P_gas = np.sum(x)*R*T
+                
+        if isinstance(gas.species, Specie):
+            return mol_flux / D / P_gas * R * T
+        else:
+            invD = np.zeros_like(D, dtype=float)
+            offdiag = ~np.eye(D.shape[0], dtype=bool)
+            np.divide(1.0, D, out=invD, where=offdiag)
 
+            sum_1 = invD @ x
+            sum_2 = invD @ mol_flux
+
+            dc_dy = (mol_flux * sum_1 - x * sum_2) / P_gas * R * T
+            return dc_dy
+    
     def dP_dl(
         self, mol_flux: float, T: float, P: np.ndarray, gas: Mixture, delta: float
     ) -> np.ndarray:
@@ -530,11 +582,11 @@ class StefanMaxwell(PorousTransport):
         Parameters
         ----------
         mol_flux : float
-            molar flux [mol/m^2]
+            molar flux [mol/m^2.s]
         T : float
             Temperature [K]
-        P : float
-            Pressure [Pa]
+        P : np.ndarray
+            Partial pressures [Pa]
         gas : Mixture
             Mixture of species
 
@@ -542,23 +594,11 @@ class StefanMaxwell(PorousTransport):
         -----
         * This function assumes: (i) no transiency (ii) binary mixture (iii) ideal gas law
         * Stefan-Maxwell model for diffusion
-        * Note that the molar flux in the diffusion equations is equal to -mol_flux
         """
-        P_gas = sum(P)
-        D = self.D_eff(T, P_gas, gas)
+        D = self.D_eff(T, sum(P), gas)
 
-        def molar_fractions(y, x):
-            n_species = len(gas.species)
-            dx_dy = np.zeros(n_species)
-            for i in range(n_species):
-                sum_1 = 0
-                sum_2 = 0
-                for j in range(n_species):
-                    if j != i:
-                        sum_1 += x[j] / D[i][j]
-                        sum_2 += mol_flux[j] / D[i][j]
-                dx_dy[i] = R * T / P_gas * (mol_flux[i] * sum_1 - x[i] * sum_2)
-            return dx_dy
+        def molar_fractions(y, P):
+            return self.dc_dl(P/(R*T), mol_flux, D,  T, gas) * R * T
 
         solution = solve_ivp(molar_fractions, (0, delta), P)
         return solution.y[:, -1]
@@ -582,6 +622,8 @@ class Layer:
         flags if degradation for polarization resistance is active
     ohm_deg : bool, optional
         flags if degradation for ohmic resistance is active
+    elements : int, optional
+        number of elements for spatial discretization of layer
     """
 
     def __init__(
@@ -591,12 +633,14 @@ class Layer:
         conductivity=Conductivity(),
         transport=PorousTransport(),
         degradation=NoDegradation(),
+        elements=2,
     ):
         self.delta = delta
         self.kinetic = kinetic
         self.conductivity = conductivity
         self.transport = transport
         self.degradation = degradation
+        self.elements = elements
 
     def V_ohm(self, j: float, T: float, **kwargs) -> float:
         """

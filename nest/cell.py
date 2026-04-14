@@ -141,6 +141,7 @@ class Cell:
         electrode_air: Layer,
         elements: int = 10,
         reactions: tuple[Reaction] = (NoReaction(),),
+        delta_channel = 0.001,
     ):
         self.area = area
         self.electrode_fuel = electrode_fuel
@@ -148,8 +149,9 @@ class Cell:
         self.electrode_air = electrode_air
         self.elements = elements
         self.reactions = reactions
+        self.delta_channel = delta_channel 
 
-    def V_nerst(self, T: float, Ps_fuel: np.ndarray, Ps_air: np.ndarray) -> float:
+    def V_nernst(self, T: float, Ps_fuel: np.ndarray, Ps_air: np.ndarray) -> float:
         """
         Thermodynamic voltage (reversible limit) [V]
 
@@ -163,8 +165,25 @@ class Cell:
             Partial pressure for air side [Pa]
         """
         return -(
-            self.electrode_fuel.kinetic.V_nerst_half(T, Ps_fuel)
-            + self.electrode_air.kinetic.V_nerst_half(T, Ps_air)
+            self.electrode_fuel.kinetic.V_nernst_half(T, Ps_fuel)
+            + self.electrode_air.kinetic.V_nernst_half(T, Ps_air)
+        )
+    def Vt_nernst(self, T: float) -> float:
+        """
+        Thermodynamic voltage (reversible limit) [V]
+
+        Parameters
+        ----------
+        T : float
+            Temperature [K]
+        Ps_fuel : np.ndarray
+            Partial pressure for fuel side [Pa]
+        Ps_air : np.ndarray
+            Partial pressure for air side [Pa]
+        """
+        return -(
+            self.electrode_fuel.kinetic.Vt_nernst_half(T)
+            + self.electrode_air.kinetic.Vt_nernst_half(T)
         )
 
     def V(
@@ -187,7 +206,7 @@ class Cell:
         Ps_fuel_star = self.electrode_fuel.Ps_star(j, T, Ps_fuel)
         Ps_air_star = self.electrode_air.Ps_star(j, T, Ps_air)
 
-        V_th = self.V_nerst(T, Ps_fuel_star, Ps_air_star)
+        V_th = self.V_nernst(T, Ps_fuel_star, Ps_air_star)
 
         kwargs_fuel = {key: value[0] for key, value in kwargs.items()}
         V_fuel = self.electrode_fuel.V(j, T, Ps=Ps_fuel_star, **kwargs_fuel)
@@ -283,7 +302,7 @@ class Cell:
             current density [A/cm^2]
         """
         return (
-            boundary.Ps_fuel()
+            boundary.Ps_air()
             + (boundary.n_air + self.dn_air(j))
             / sum(boundary.n_air + self.dn_air(j))
             * boundary.P

@@ -131,7 +131,18 @@ class Specie:
             return 0
         else:
             return self.h(T) - T * self.s(T, P)
+    def gT(self, T: float) -> float:
+        """
+        Molar specific gibbs free energy at reference pressure [J/mol.K]
 
+        Parameters
+        ----------
+        T : float
+            Temperature [K]
+        P : float
+            Absolute pressure [Pa]
+        """
+        return self.h(T) - T * self.s(T, P_0)
 
 class Mixture:
     """
