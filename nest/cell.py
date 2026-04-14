@@ -141,7 +141,7 @@ class Cell:
         electrode_air: Layer,
         elements: int = 10,
         reactions: tuple[Reaction] = (NoReaction(),),
-        delta_channel = 0.0001,
+        delta_channel = 0.001,
     ):
         self.area = area
         self.electrode_fuel = electrode_fuel
