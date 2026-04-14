@@ -116,7 +116,7 @@ def durability_test():
     start_time = process_time()
     solution = cellModel.solve_for_time(conditions, "current", 5000)
     print(f"Computation time : {process_time() - start_time} seconds")
-    
+
     """
     
     fig, (ax1,ax2,ax3) = plt.subplots(1,3, figsize=(6.4*3,4.8))
@@ -168,7 +168,7 @@ def durability_test():
 
     plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1), borderaxespad=0)
     """
-    
+
     """
     fig, ax = plt.subplots(figsize=(6.4*3,4.8))
     # Solve 1D problem for material conditions
@@ -195,8 +195,8 @@ def durability_test():
     """
 
     # Solve 1D problem for material conditions
-    
-    fig, ax = plt.subplots(figsize=(6.4,4.8))
+
+    fig, ax = plt.subplots(figsize=(6.4, 4.8))
     conditions.V = 0.75
     y_matrix = np.transpose(solution.y)
     eta_fuel = np.zeros(len(y_matrix))
@@ -208,17 +208,30 @@ def durability_test():
         eta_fuel[i] = np.sum(steady_solution[8]) / cellModel.elements
         eta_air[i] = np.sum(steady_solution[9]) / cellModel.elements
         eta_ohm[i] = np.sum(steady_solution[10:]) / cellModel.elements
-        ocv[i] = np.sum(steady_solution[0]) / cellModel.elements + eta_fuel[i] + eta_air[i] + eta_ohm[i]
-        
+        ocv[i] = (
+            np.sum(steady_solution[0]) / cellModel.elements
+            + eta_fuel[i]
+            + eta_air[i]
+            + eta_ohm[i]
+        )
+
         conditions.V = np.sum(steady_solution[0]) / cellModel.elements
 
     ax.plot(solution.t, ocv, label="OCV")
     ax.plot(solution.t, ocv - eta_ohm, label="Ohmic")
-    ax.fill_between(solution.t,ocv,ocv-eta_ohm, alpha=.5, color="C1")
+    ax.fill_between(solution.t, ocv, ocv - eta_ohm, alpha=0.5, color="C1")
     ax.plot(solution.t, ocv - eta_ohm - eta_fuel, label="Fuel")
-    ax.fill_between(solution.t,ocv-eta_ohm, ocv - eta_ohm - eta_fuel , alpha=.5, color="C2")
-    ax.plot(solution.t, ocv - eta_ohm - eta_fuel- eta_air, label="Air")
-    ax.fill_between(solution.t, ocv - eta_ohm - eta_fuel, ocv - eta_ohm - eta_fuel- eta_air , alpha=.5, color="C3")
+    ax.fill_between(
+        solution.t, ocv - eta_ohm, ocv - eta_ohm - eta_fuel, alpha=0.5, color="C2"
+    )
+    ax.plot(solution.t, ocv - eta_ohm - eta_fuel - eta_air, label="Air")
+    ax.fill_between(
+        solution.t,
+        ocv - eta_ohm - eta_fuel,
+        ocv - eta_ohm - eta_fuel - eta_air,
+        alpha=0.5,
+        color="C3",
+    )
     ax.set_xlabel("Time (h)")
     ax.set_ylabel("Voltage (V)")
 
@@ -230,7 +243,7 @@ def durability_test():
 
     plt.title("94%H2+6%H2O | 21%O2+79%N2 | 700 degC", fontsize=14, loc="center")
     plt.legend()
-    
+
     return plt.show()
 
 
