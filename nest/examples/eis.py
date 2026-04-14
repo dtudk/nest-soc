@@ -384,7 +384,7 @@ def eis():
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(6.4 * 3, 4.8))
     
     #for i,elements in enumerate([856,807,757,657]):
-    for i,elements in enumerate([1]):
+    for i,elements in enumerate([10]):
         # Define cell
         fuel_mix = properties.Mixture(
             (properties.BasicSpecies.H2, properties.BasicSpecies.H2O)
@@ -444,7 +444,7 @@ def eis():
             ),
             transport=layers.StefanMaxwell(dp=6e-7, epsilon=0.3, tau=2.8),
         )
-        cellObject =  cell.Cell(16e-4, Ni_YSZ, (YSZ, YSZ_CGO, CGO), LSCF_CGO, elements=10)
+        cellObject =  cell.Cell(16e-4, Ni_YSZ, (YSZ, YSZ_CGO, CGO), LSCF_CGO, elements=elements, delta_channel=1e-5)
 
         # Define boundary conditions
         n_fuel_total = (24 / 1e3 / 3600) * (1e5 / 8.314510 / 273.15)  # mol/s

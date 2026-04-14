@@ -27,7 +27,7 @@ def durability_test():
             n_e=2,
             alpha=0.59,
             beta=1 - 0.59,
-            gamma=1.82527e6 / (6.79e12 - 1.19e12 - 1.41e12),
+            gamma=1.82527e6 / 3.1286E+12,
             p=np.array([-0.1, 0.33]),
             theta=1,
             E_act=1.09 / 8.617333262e-5 * 8.314510,
