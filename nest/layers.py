@@ -563,7 +563,6 @@ class StefanMaxwell(PorousTransport):
         if isinstance(gas.species, Specie):
             return mol_flux / D / P_gas * R * T
         else:
-            """
             invD = np.zeros_like(D, dtype=float)
             offdiag = ~np.eye(D.shape[0], dtype=bool)
             np.divide(1.0, D, out=invD, where=offdiag)
@@ -572,17 +571,6 @@ class StefanMaxwell(PorousTransport):
             sum_2 = invD @ mol_flux
 
             dc_dy = (mol_flux * sum_1 - x * sum_2) / P_gas * R * T
-            """
-            n_species = len(gas.species)
-            dc_dy = np.zeros(n_species)
-            for i in range(n_species):
-                sum_1 = 0
-                sum_2 = 0
-            for j in range(n_species):
-                if j != i:
-                    sum_1 += x[j] / D[i][j]
-                    sum_2 += mol_flux[j] / D[i][j]
-            dc_dy[i] =  (mol_flux[i] * sum_1 - x[i] * sum_2) / P_gas * R * T
             return dc_dy
     
     def dP_dl(
