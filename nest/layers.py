@@ -59,7 +59,7 @@ class Kinetic:
         p=np.array([0]),
         theta=1,
         E_act=0,
-        C = 1E-5
+        C=1e-5,
     ):
         # Related to reaction balance
         self.gas = gas
@@ -118,8 +118,10 @@ class Kinetic:
             return self.nu[0] * self.gas.species.g(T, Ps[0]) / (self.n_e * F)
         else:
             return sum(
-                nu_i * gas_i.g(T, Ps_i) for nu_i, gas_i, Ps_i in zip(self.nu, self.gas.species, Ps)
+                nu_i * gas_i.g(T, Ps_i)
+                for nu_i, gas_i, Ps_i in zip(self.nu, self.gas.species, Ps)
             ) / (self.n_e * F)
+
     def Vt_nernst_half(self, T):
         """
         Voltage for electrode side reaction at reference pressure [V]
@@ -537,11 +539,13 @@ class StefanMaxwell(PorousTransport):
                     ]
                 )
             )
-        
-    def dc_dl(self, x:np.ndarray, mol_flux: np.ndarray, D:np.ndarray, T: float, gas: Mixture) -> np.ndarray:
+
+    def dc_dl(
+        self, x: np.ndarray, mol_flux: np.ndarray, D: np.ndarray, T: float, gas: Mixture
+    ) -> np.ndarray:
         """
         Molar concentration gradient along layer thickness [mol/m^4]
-        
+
         Parameters
         ----------
         x : numpy.ndarray
@@ -552,14 +556,14 @@ class StefanMaxwell(PorousTransport):
             Temperature [K]
         gas : Mixture
             Mixture of species
-        
+
         Notes
         -----
         * This function assumes: (i) no transiency (ii) multi-component mixture (iii) ideal gas law
         * Note that the molar flux in the diffusion equations is equal to -mol_flux
         """
-        P_gas = np.sum(x)*R*T
-                
+        P_gas = np.sum(x) * R * T
+
         if isinstance(gas.species, Specie):
             return mol_flux / D / P_gas * R * T
         else:
@@ -572,7 +576,7 @@ class StefanMaxwell(PorousTransport):
 
             dc_dy = (mol_flux * sum_1 - x * sum_2) / P_gas * R * T
             return dc_dy
-    
+
     def dP_dl(
         self, mol_flux: float, T: float, P: np.ndarray, gas: Mixture, delta: float
     ) -> np.ndarray:
@@ -598,7 +602,7 @@ class StefanMaxwell(PorousTransport):
         D = self.D_eff(T, sum(P), gas)
 
         def molar_fractions(y, P):
-            return self.dc_dl(P/(R*T), mol_flux, D,  T, gas) * R * T
+            return self.dc_dl(P / (R * T), mol_flux, D, T, gas) * R * T
 
         solution = solve_ivp(molar_fractions, (0, delta), P)
         return solution.y[:, -1]
