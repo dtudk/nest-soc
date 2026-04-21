@@ -517,7 +517,6 @@ def eis():
             (properties.BasicSpecies.H2, properties.BasicSpecies.H2O)
         )
         air_mix = properties.Mixture((properties.BasicSpecies.O2))
-        factors = [0.9, 0.9 * 0.9, 0.6 * 0.9 * 0.9, 0.6 * 0.9 * 0.9 * 0.55]
         Ni_YSZ = layers.Layer(
             delta=3e-4 + 10e-6,
             kinetic=layers.ButlerVolmer(
