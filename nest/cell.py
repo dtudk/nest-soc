@@ -168,7 +168,23 @@ class Cell:
             self.electrode_fuel.kinetic.V_nernst_half(T, Ps_fuel)
             + self.electrode_air.kinetic.V_nernst_half(T, Ps_air)
         )
+    def V_thermoneutral(self, T: float) -> float:
+            """
+            Thermodynamic voltage (reversible limit) [V]
 
+            Parameters
+            ----------
+            T : float
+                Temperature [K]
+            Ps_fuel : np.ndarray
+                Partial pressure for fuel side [Pa]
+            Ps_air : np.ndarray
+                Partial pressure for air side [Pa]
+            """
+            return -(
+                self.electrode_fuel.kinetic.V_thermoneutral_half(T)
+                + self.electrode_air.kinetic.V_thermoneutral_half(T)
+            )
     def Vt_nernst(self, T: float) -> float:
         """
         Thermodynamic voltage (reversible limit) [V]
@@ -530,7 +546,7 @@ class Cell:
                 for i in range(len(boundary.n_air))
             ]
             in_b = BoundaryData(
-                boundary.V, steady_solution[1][j], n_fuel, n_air, boundary.T, boundary.P
+                steady_solution[0][j], steady_solution[1][j], n_fuel, n_air, steady_solution[2][j], steady_solution[3][j]
             )
             P_fuel_tpb = self.electrode_fuel.Ps_star(
                 steady_solution[1][j],
@@ -544,7 +560,7 @@ class Cell:
             )
             # OBS: boundary.P may not be equal to sum(P_fuel_tpb) or sum(P_air_tpb)
             in_b = BoundaryData(
-                boundary.V, boundary.j, P_fuel_tpb, P_air_tpb, boundary.T, boundary.P
+                steady_solution[0][j], steady_solution[1][j], P_fuel_tpb, P_air_tpb, steady_solution[2][j], steady_solution[3][j]
             )
             # 3.2 Calculate rates
             if self.electrode_fuel.degradation.pol_active:
@@ -563,8 +579,7 @@ class Cell:
                     )
                 )
                 i += 1
-
-        for j in range(self.elements):
+            # Electrolytes
             i = 0
             for k, layer in enumerate(self.electrolyte):
                 if layer.degradation.ohm_active:
