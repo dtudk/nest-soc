@@ -27,7 +27,7 @@ def durability_test():
             n_e=2,
             alpha=0.59,
             beta=1 - 0.59,
-            gamma=1.82527e6 / 3.1286e12,
+            gamma=1.82527e6 / 4.19e12,
             p=np.array([-0.1, 0.33]),
             theta=1,
             E_act=1.09 / 8.617333262e-5 * 8.314510,
@@ -40,7 +40,7 @@ def durability_test():
         degradation=degradation.NickelAgglomeration(
             psi_ed=0.4,
             psi_el=0.6,
-            r0_ed=300e-9,
+            r0_ed=250e-9,
             r0_el=350e-9,
             epsilon=0.3,
             alpha=3.04e8,
@@ -80,6 +80,7 @@ def durability_test():
         degradation=degradation.ChromiumPoison(
             x_H2O=0.01,
             j0=4.27254e7,
+            E_act = 1.45 / 8.617333262e-5 * 8.314510,
         ),
     )
     Crofer22 = layers.Layer(
