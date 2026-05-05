@@ -270,13 +270,20 @@ class NickelAgglomeration(Degradation):
         ----------
         r_ed : float
             mean electrode particle radius [m]
+        
+        Notes
+        -----
+        The neck radius equation here is different from the Ref. [1] which only basis in the "smaller particle".
+        The original source, Ref. [2], actually uses the "inclusion particle" as the radius of reference, which is the Ni in this case.
+        This is important in the cases that Ni may grow lager than the initial size of YSZ, making the degradation model suddenly change from the "min" function.
 
         Reference
         ---------
         [1] https://doi.org/10.1016/j.jpowsour.2009.02.051
+        [2] https://doi.org/10.1016/S0013-4686(97)00063-7
         """
         z_ed_el = self.z_ij(self.psi_ed, self.psi_el, r_ed, self.r0_el)
-        r_c = min(r_ed, self.r0_el) * np.sin(self.theta)
+        r_c = r_ed * np.sin(self.theta)
         return (3 / 2 * r_c / r_ed**3 * (1 - self.epsilon)) * self.psi_ed * z_ed_el
 
     def l_tpb_eff(self, r_ed: float) -> float:
@@ -472,10 +479,11 @@ class ChromiumPoison(Degradation):
         flags if degradation for polarization resistance is active
     """
 
-    def __init__(self, x_H2O: float, j0: float, pol_active=True):
+    def __init__(self, x_H2O: float, j0: float, E_act:float, pol_active=True):
         self.m0 = 1  # polarization degradation ratio [1 = begining of life]
         self.x_H2O = x_H2O
         self.j0 = j0
+        self.E_act = E_act
         self.pol_active = pol_active
         self.ohm_active = False
 
@@ -498,10 +506,9 @@ class ChromiumPoison(Degradation):
         h_TPB = 35e-9  # m
         M_Cr2O3 = 151.99  # A/m^2
         rho_Cr2O3 = 5.22 / (1e-2) ** 3  # g/m^3
-        E_act = 1.45 / 8.617333262e-5 * 8.314510
         j = (
             self.j0
-            * np.exp(-E_act / (R * state.T))
+            * np.exp(-self.E_act / (R * state.T))
             * (P_CrO2 / state.P) ** 0.5
             * self.x_H2O**0.5
             * 2
