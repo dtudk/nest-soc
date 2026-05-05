@@ -121,6 +121,24 @@ class Kinetic:
                 nu_i * gas_i.g(T, Ps_i)
                 for nu_i, gas_i, Ps_i in zip(self.nu, self.gas.species, Ps)
             ) / (self.n_e * F)
+    def V_thermoneutral_half(self, T):
+        """
+        Voltage for electrode side reaction [V]
+
+        Parameters
+        ----------
+        T : float
+            Temperature [K]
+        Ps : numpy.ndarray
+            Partial pressures
+        """
+        if isinstance(self.gas.species, Specie):
+            return self.nu[0] * self.gas.species.h(T) / (self.n_e * F)
+        else:
+            return sum(
+                nu_i * gas_i.h(T)
+                for nu_i, gas_i in zip(self.nu, self.gas.species)
+            ) / (self.n_e * F)
 
     def Vt_nernst_half(self, T):
         """
