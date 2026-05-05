@@ -3,12 +3,13 @@ from nest.examples.iv_curve_ce import iv_curve_ce
 from nest.examples.iv_curve_co2 import iv_curve_co2
 from nest.examples.durability import durability_test
 from nest.examples.eis import eis
-
+from nest.examples.fuel_cell_rev import durability_test as durability_test_rev
 
 if __name__ == "__main__":
     # Plotting result examples
-    iv_curve()
-    iv_curve_ce()
-    durability_test()
-    iv_curve_co2()
-    eis()
+    #iv_curve()
+    #iv_curve_ce()
+    #durability_test()
+    #iv_curve_co2()
+    #eis()
+    durability_test_rev()

@@ -361,13 +361,11 @@ class Cell:
         # Record solution
         n_out_fuel = boundary.n_fuel + self.dn_fuel(j, boundary)
         n_out_air = boundary.n_air + self.dn_air(j)
-        """
         C_fuel = sum(n_out_i * gas_i.cp(boundary.T) for n_out_i, gas_i in zip(n_out_fuel, self.electrode_fuel.kinetic.gas.species))
         C_air = sum(n_out_i * gas_i.cp(boundary.T) for n_out_i, gas_i in zip(n_out_air, self.electrode_air.kinetic.gas.species))
         V_thermo = self.V_thermoneutral(boundary.T)
         T_out = boundary.T+j*self.area/self.elements*(V_thermo-boundary.V)/(C_fuel+C_air)
-        """
-        T_out = boundary.T # Simplified for now - Isothermic
+        #T_out = boundary.T # Simplified for now - Isothermic
         P_out = boundary.P  # Simplified for now - Isobaric
         return BoundaryData(
             V=boundary.V, j=j, n_fuel=n_out_fuel, n_air=n_out_air, T=T_out, P=P_out
@@ -541,18 +539,15 @@ class Cell:
         ohm_deg_dt = np.zeros(self.elements * n_ohm_deg)
 
         # AC:DC workaround
-        """
-        if t % 1000 >= 700:
+        if t % 1000 >= 800:
             boundary.V = 0.75
-            #boundary.j = -0.05E4
             boundary.j = -0.5E4
             boundary.T = 750+273.15
         else:
-            #boundary.V = 0.7*(1-0.0035*t/1000)
             boundary.V = 0.7*(1-0.0030*t/1000)
             boundary.j = 0.5E4    
             boundary.T = 650+273.15
-        """
+        
         steady_solution = self.solve_time_step(y, boundary, mode)
         # 3. Calculate the rates for each segment and layer
         index = 4 + len(boundary.n_fuel) + len(boundary.n_air)
@@ -648,5 +643,5 @@ class Cell:
         y0 = np.concatenate((pol_deg_0, ohm_deg_0, power_0))
         t_span = (0, t_max)
         return solve_ivp(
-            self.advance_time_step, t_span, y0, args=(boundary, mode), method="RK23"#, max_step=50
+            self.advance_time_step, t_span, y0, args=(boundary, mode), method="RK23", max_step=50
         )
