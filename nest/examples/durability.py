@@ -80,7 +80,7 @@ def durability_test():
         degradation=degradation.ChromiumPoison(
             x_H2O=0.01,
             j0=4.27254e7,
-            E_act = 1.45 / 8.617333262e-5 * 8.314510,
+            E_act=1.45 / 8.617333262e-5 * 8.314510,
         ),
     )
     Crofer22 = layers.Layer(

@@ -50,7 +50,7 @@ class Kinetic:
 
     def __init__(
         self,
-        gas=BasicSpecies.H2,
+        gas=(BasicSpecies.H2,),
         nu=np.array([0]),
         n_e=2,
         alpha=0,
@@ -63,13 +63,13 @@ class Kinetic:
     ):
         # Related to reaction balance
         self.gas = gas
-        self.nu = nu
+        self.nu = np.array(nu)
         self.n_e = n_e
         # Related to exchange current density
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
-        self.p = p
+        self.p = np.array(p)
         self.theta = theta
         self.E_act = E_act
         self.C = C
@@ -121,6 +121,7 @@ class Kinetic:
                 nu_i * gas_i.g(T, Ps_i)
                 for nu_i, gas_i, Ps_i in zip(self.nu, self.gas.species, Ps)
             ) / (self.n_e * F)
+
     def V_thermoneutral_half(self, T):
         """
         Voltage for electrode side reaction [V]
@@ -136,8 +137,7 @@ class Kinetic:
             return self.nu[0] * self.gas.species.h(T) / (self.n_e * F)
         else:
             return sum(
-                nu_i * gas_i.h(T)
-                for nu_i, gas_i in zip(self.nu, self.gas.species)
+                nu_i * gas_i.h(T) for nu_i, gas_i in zip(self.nu, self.gas.species)
             ) / (self.n_e * F)
 
     def Vt_nernst_half(self, T):
@@ -403,7 +403,7 @@ class PorousTransport:
         -----
         * Works as a pseudo-abstract method
         """
-        return 0
+        return P
 
 
 class BinaryFick(PorousTransport):
@@ -582,7 +582,7 @@ class StefanMaxwell(PorousTransport):
         """
         P_gas = np.sum(x) * R * T
 
-        if isinstance(gas.species, Specie):
+        if isinstance(gas.species, Specie) or len(gas.species) == 1:
             return mol_flux / D / P_gas * R * T
         else:
             invD = np.zeros_like(D, dtype=float)

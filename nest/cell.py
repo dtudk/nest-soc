@@ -168,23 +168,25 @@ class Cell:
             self.electrode_fuel.kinetic.V_nernst_half(T, Ps_fuel)
             + self.electrode_air.kinetic.V_nernst_half(T, Ps_air)
         )
-    def V_thermoneutral(self, T: float) -> float:
-            """
-            Thermodynamic voltage (reversible limit) [V]
 
-            Parameters
-            ----------
-            T : float
-                Temperature [K]
-            Ps_fuel : np.ndarray
-                Partial pressure for fuel side [Pa]
-            Ps_air : np.ndarray
-                Partial pressure for air side [Pa]
-            """
-            return -(
-                self.electrode_fuel.kinetic.V_thermoneutral_half(T)
-                + self.electrode_air.kinetic.V_thermoneutral_half(T)
-            )
+    def V_thermoneutral(self, T: float) -> float:
+        """
+        Thermodynamic voltage (reversible limit) [V]
+
+        Parameters
+        ----------
+        T : float
+            Temperature [K]
+        Ps_fuel : np.ndarray
+            Partial pressure for fuel side [Pa]
+        Ps_air : np.ndarray
+            Partial pressure for air side [Pa]
+        """
+        return -(
+            self.electrode_fuel.kinetic.V_thermoneutral_half(T)
+            + self.electrode_air.kinetic.V_thermoneutral_half(T)
+        )
+
     def Vt_nernst(self, T: float) -> float:
         """
         Thermodynamic voltage (reversible limit) [V]
@@ -367,7 +369,7 @@ class Cell:
         V_thermo = self.V_thermoneutral(boundary.T)
         T_out = boundary.T+j*self.area/self.elements*(V_thermo-boundary.V)/(C_fuel+C_air)
         """
-        T_out = boundary.T # Simplified for now - Isothermic
+        T_out = boundary.T  # Simplified for now - Isothermic
         P_out = boundary.P  # Simplified for now - Isobaric
         return BoundaryData(
             V=boundary.V, j=j, n_fuel=n_out_fuel, n_air=n_out_air, T=T_out, P=P_out
@@ -501,7 +503,7 @@ class Cell:
             aux = 0
             for j, layer in enumerate(self.electrolyte):
                 if layer.degradation.ohm_active:
-                    ohm_deg[i][j] = y[aux + i * n_ohm_deg + aux_counter]
+                    ohm_deg[i][j + 2] = y[aux + i * n_ohm_deg + aux_counter]
                     aux += 1
         kwargs = {"pol_deg": pol_deg, "ohm_deg": ohm_deg}
 
@@ -565,7 +567,12 @@ class Cell:
                 for i in range(len(boundary.n_air))
             ]
             in_b = BoundaryData(
-                steady_solution[0][j], steady_solution[1][j], n_fuel, n_air, steady_solution[2][j], steady_solution[3][j]
+                steady_solution[0][j],
+                steady_solution[1][j],
+                n_fuel,
+                n_air,
+                steady_solution[2][j],
+                steady_solution[3][j],
             )
             P_fuel_tpb = self.electrode_fuel.Ps_star(
                 steady_solution[1][j],
@@ -579,7 +586,12 @@ class Cell:
             )
             # OBS: boundary.P may not be equal to sum(P_fuel_tpb) or sum(P_air_tpb)
             in_b = BoundaryData(
-                steady_solution[0][j], steady_solution[1][j], P_fuel_tpb, P_air_tpb, steady_solution[2][j], steady_solution[3][j]
+                steady_solution[0][j],
+                steady_solution[1][j],
+                P_fuel_tpb,
+                P_air_tpb,
+                steady_solution[2][j],
+                steady_solution[3][j],
             )
             # 3.2 Calculate rates
             if self.electrode_fuel.degradation.pol_active:
@@ -648,5 +660,9 @@ class Cell:
         y0 = np.concatenate((pol_deg_0, ohm_deg_0, power_0))
         t_span = (0, t_max)
         return solve_ivp(
-            self.advance_time_step, t_span, y0, args=(boundary, mode), method="RK23"#, max_step=50
+            self.advance_time_step,
+            t_span,
+            y0,
+            args=(boundary, mode),
+            method="RK23",  # , max_step=50
         )

@@ -118,8 +118,6 @@ class NickelAgglomeration(Degradation):
 
     Parameters
     ----------
-    delta : float
-        layer thickness (support+functional) [m]
     psi_ed : float
         solid volume fraction of electrode [-]
     psi_el : float
@@ -130,6 +128,12 @@ class NickelAgglomeration(Degradation):
         mean electrolyte particle radius [m]
     epsilon : float
         porosity of functional layer [-]
+    alpha : float
+        pre-exponential factor for Ni agglomeration rate [?]
+    r_ed_max : float
+        maximum Ni particle radius [m]
+    E_act : float
+        activation energy for Ni agglomeration [J/mol]
     z_bar : float, optional
         average coordination number. Defalt value source: [1]
     theta : float, optional
@@ -164,6 +168,7 @@ class NickelAgglomeration(Degradation):
         epsilon: float,
         alpha: float,
         r_ed_max: float,
+        E_act=242e3,
         z_bar=6,
         theta=15 * pi / 180,
         pol_active=True,
@@ -176,6 +181,7 @@ class NickelAgglomeration(Degradation):
         self.epsilon = epsilon
         self.alpha = alpha
         self.r_ed_max = r_ed_max
+        self.E_act = E_act
         self.z_bar = z_bar
         self.theta = theta
         self.pol_active = pol_active
@@ -270,7 +276,7 @@ class NickelAgglomeration(Degradation):
         ----------
         r_ed : float
             mean electrode particle radius [m]
-        
+
         Notes
         -----
         The neck radius equation here is different from the Ref. [1] which only basis in the "smaller particle".
@@ -386,11 +392,12 @@ class NickelAgglomeration(Degradation):
             * (Ps_fuel_star[1] / 1e5)
             / (Ps_fuel_star[0] / 1e5) ** 0.5
         )
-        E_a = 242e3  # J/mol - Source: https://www.sciencedirect.com/science/article/pii/S0196890421000790
         if r > self.r_ed_max * 1e6:
             return 0
         else:
-            return k * np.exp(-E_a / (R * state.T)) / (r * 2) ** 7  # unit conversion
+            return (
+                k * np.exp(-self.E_act / (R * state.T)) / (r * 2) ** 7
+            )  # unit conversion
 
     def pol_deg(self, m):
         """
@@ -479,7 +486,7 @@ class ChromiumPoison(Degradation):
         flags if degradation for polarization resistance is active
     """
 
-    def __init__(self, x_H2O: float, j0: float, E_act:float, pol_active=True):
+    def __init__(self, x_H2O: float, j0: float, E_act: float, pol_active=True):
         self.m0 = 1  # polarization degradation ratio [1 = begining of life]
         self.x_H2O = x_H2O
         self.j0 = j0

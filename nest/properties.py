@@ -168,6 +168,7 @@ class Mixture:
         self.species = species
         if isinstance(species, Specie):
             self.M_ij = 0
+            self.species = (species,)  # convert input to tuple
         elif len(species) == 1:
             self.M_ij = 0
         else:

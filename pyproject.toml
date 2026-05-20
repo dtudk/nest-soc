@@ -1,18 +1,28 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "nest-soc"
-version = "0.1"
+version = "0.3.0"
 description = "Modeling package for solid oxide cells as part of the NEST (Next-gen electrochemical system tools) project"
 readme = "README.md"
 requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
 license = "MIT"
+license-files = ["LINCENSE"]
 authors = [
     { name = "Rafael Nogueira Nakashima", email = "rafnn@dtu.dk" },
     { name = "Javid Beyrami", email = "jabey@dtu.dk"}]
-dependencies = ["numpy>=1.24", "scipy>=1.10", "matplotlib>=3.7", "pandas>=2.1"]
+dependencies = ["numpy>=2.3.2", "scipy>=1.16.2", "matplotlib>=3.10.6", "pandas>=2.3.1", "scikit-sundae>=1.1.2"]
+keywords = ["sofc", "soec", "fuel cell", "electrolysis", "hydrogen", "degradation"]
 
 [project.optional-dependencies]
 dev = ["build >= 1.3", "pytest>=7.4", "ruff>=0.6"]
+
+[project.urls]
+Homepage = "https://github.com/dtudk/nest-soc"
+Issues = "https://github.com/dtudk/nest-soc/issues"

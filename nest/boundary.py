@@ -27,17 +27,17 @@ class BoundaryData:
 
     def __init__(
         self,
-        V: float = 0,
+        V: float = 1,
         j: float = 0,
         n_fuel: np.ndarray = np.zeros(1),
         n_air: np.ndarray = np.zeros(1),
-        T: float = 0,
-        P: float = 0,
+        T: float = 25 + 273.15,
+        P: float = 1e5,
     ):
         self.V = V
         self.j = j
-        self.n_fuel = n_fuel
-        self.n_air = n_air
+        self.n_fuel = np.array(n_fuel)
+        self.n_air = np.array(n_air)
         self.T = T
         self.P = P
 
