@@ -623,7 +623,7 @@ class Cell:
         # 4. Return it
         return np.concatenate((pol_deg_dt, ohm_deg_dt, power_dt))
 
-    def solve_for_time(self, boundary, mode, t_max):
+    def solve_for_time(self, boundary, mode, t_max, events=None):
         """
         Wrapper to solve the differential equations for degradation
 
@@ -664,5 +664,6 @@ class Cell:
             t_span,
             y0,
             args=(boundary, mode),
+            events=events,
             method="RK23",  # , max_step=50
         )
