@@ -1,0 +1,30 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+.pypirc
+
+# Builds
+build/
+dist/
+*.egg-info/
+
+# Tests and notebooks
+.pytest_cache/
+.coverage*
+htmlcov/
+.test-output/
+.ipynb_checkpoints/
+
+# Generated simulation results
+*_results/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+tempCodeRunnerFile.py
