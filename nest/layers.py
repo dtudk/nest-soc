@@ -41,10 +41,7 @@ class Kinetic:
         activation energy for temperature dependency [J/mol.K]
     exchange_current_prefactor : float, optional
         TPB-based pre-exponential kinetic factor [A/(m K^theta)].
-        Keyword-only; cannot be supplied together with gamma.
-        When omitted, gamma selects area-based kinetics [A/(m^2 K^theta)]
-        and defaults to zero. j_0 returns [A/m] for TPB-based kinetics.
-        Array partial pressures use the first axis for species.
+        Cannot be supplied together with gamma.
 
     Notes
     -----
@@ -69,7 +66,6 @@ class Kinetic:
         theta=1,
         E_act=0,
         C=1e-5,
-        *,
         exchange_current_prefactor=None,
     ):
         if gamma is not _DEFAULT_GAMMA and exchange_current_prefactor is not None:
@@ -223,9 +219,6 @@ class ButlerVolmer(Kinetic):
         activation energy for Arrhenius equation [J/mol.K]
     exchange_current_prefactor : float, optional
         TPB-based pre-exponential kinetic factor [A/(m K^theta)].
-        Keyword-only; cannot be supplied together with gamma.
-        With TPB-based j0, j and its voltage derivatives are per TPB length
-        [A/m] rather than per area. V uses the same current units as j0.
     """
 
     def j(self, V: float, T: float, j0: float) -> float:
