@@ -404,6 +404,75 @@ class PorousTransport:
         """
         return self.dp / 3 * (8 * R * T / (pi * specie.M / 1000)) ** (0.5)
 
+    def dusty_gas_flux(
+        self,
+        temperature: float,
+        gas: Mixture,
+        concentrations: np.ndarray,
+        concentration_gradient: np.ndarray,
+    ) -> np.ndarray:
+        """Calculate binary molar fluxes using the Dusty-Gas Model.
+
+        Parameters
+        ----------
+        temperature : float
+            Temperature [K].
+        gas : Mixture
+            Two-species gas mixture.
+        concentrations : array_like
+            Species concentrations [mol/m^3], shaped (2, ...).
+        concentration_gradient : array_like
+            Concentration gradients [mol/m^4], same shape as concentrations.
+
+        Returns
+        -------
+        flux : ndarray
+            Species molar fluxes [mol/(m^2 s)], shaped (2, ...).
+
+        Notes
+        -----
+        Accounts for molecular diffusion, Knudsen diffusion, and pressure-driven transport.
+        """
+        if len(gas.species) != 2:
+            raise ValueError("Dusty-Gas Model requires a binary mixture")
+        T = float(temperature)
+        c = np.asarray(concentrations, dtype=float)
+        grad_c = np.asarray(concentration_gradient, dtype=float)
+
+        # Local gas pressure and mole fractions.
+        pressure = R * T * c.sum(axis=0)
+        x = c / c.sum(axis=0)
+
+        # Effective molecular and Knudsen diffusivities [m²/s].
+        porosity_factor = self.epsilon / self.tau
+        D12 = porosity_factor * gas.D_ij(0, 1, T, pressure)
+        DK = porosity_factor * np.array([
+            self.D_knudsen(T, specie) for specie in gas.species
+        ])
+
+        # Gas viscosity [Pa s] and porous permeability [m²].
+        viscosity = gas.viscosity(T, x)
+        permeability = porosity_factor * self.dp**2 / 32
+
+        # Coefficient matrix of the binary dusty-gas equations.
+        matrix = np.empty(pressure.shape + (2, 2))
+        matrix[..., 0, 0] = 1 / DK[0] + x[1] / D12
+        matrix[..., 0, 1] = -x[0] / D12
+        matrix[..., 1, 0] = -x[1] / D12
+        matrix[..., 1, 1] = 1 / DK[1] + x[0] / D12
+
+        driving = (
+            -grad_c
+            - permeability / viscosity
+            * c / DK.reshape((2,) + (1,) * (c.ndim - 1))
+            * (R * T * grad_c.sum(axis=0))
+        )
+
+        rhs = np.moveaxis(driving, 0, -1)[..., None]
+        flux = np.linalg.solve(matrix, rhs)[..., 0]
+
+        return np.moveaxis(flux, -1, 0)
+
     def dP_dl(
         self, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture, delta: float
     ) -> float:
