@@ -2,6 +2,7 @@
 Module providing classes and functions for creating the differential equation problem
 """
 
+from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import newton
 from scipy.integrate import solve_ivp
@@ -12,6 +13,25 @@ from nest.layers import Layer
 from nest.boundary import BoundaryData
 from nest.properties import Mixture
 
+
+@dataclass(frozen=True)
+class ChannelGeometry:
+    """
+    Channel dimensions, independent of the cell active area.
+
+    Parameters
+    ----------
+    length : float
+        Channel length [m].
+    width : float
+        Channel width [m].
+    height : float
+        Channel height [m].
+    """
+
+    length: float
+    width: float
+    height: float
 
 class Reaction(ABC):
     """
@@ -131,6 +151,15 @@ class Cell:
         air-side electrode layer
     elements : int, optional
         number of elements used in finite-element method
+    fuel_channel : ChannelGeometry, optional
+        Fuel-channel length, width, and height [m].
+    air_channel : ChannelGeometry, optional
+        Air-channel length, width, and height [m].
+    fuel_support : Layer, optional
+        Fuel support; None means no support.
+        delta is the support thickness [m].
+        transport defines porosity, tortuosity, and pore diameter [m].
+        The support is used for gas transport only.
     """
 
     def __init__(
@@ -142,6 +171,9 @@ class Cell:
         elements: int = 10,
         reactions: tuple[Reaction] = (NoReaction(),),
         delta_channel=0.001,
+        fuel_channel=None,
+        air_channel=None,
+        fuel_support=None,
     ):
         self.area = area
         self.electrode_fuel = electrode_fuel
@@ -150,6 +182,9 @@ class Cell:
         self.elements = elements
         self.reactions = reactions
         self.delta_channel = delta_channel
+        self.fuel_channel = fuel_channel
+        self.air_channel = air_channel
+        self.fuel_support = fuel_support
 
     def V_nernst(self, T: float, Ps_fuel: np.ndarray, Ps_air: np.ndarray) -> float:
         """
