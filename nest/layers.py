@@ -12,6 +12,9 @@ from nest.properties import Specie, Mixture, BasicSpecies
 from nest.degradation import NoDegradation
 
 
+_DEFAULT_GAMMA = object()
+
+
 class Kinetic:
     """
     Kinetic model for eletrochemical reaction
@@ -36,6 +39,12 @@ class Kinetic:
         exponential factor for temperature dependency
     E_act : float
         activation energy for temperature dependency [J/mol.K]
+    exchange_current_prefactor : float, optional
+        TPB-based pre-exponential kinetic factor [A/(m K^theta)].
+        Keyword-only; cannot be supplied together with gamma.
+        When omitted, gamma selects area-based kinetics [A/(m^2 K^theta)]
+        and defaults to zero. j_0 returns [A/m] for TPB-based kinetics.
+        Array partial pressures use the first axis for species.
 
     Notes
     -----
@@ -55,12 +64,16 @@ class Kinetic:
         n_e=2,
         alpha=0,
         beta=0,
-        gamma=0,
+        gamma=_DEFAULT_GAMMA,
         p=np.array([0]),
         theta=1,
         E_act=0,
         C=1e-5,
+        *,
+        exchange_current_prefactor=None,
     ):
+        if gamma is not _DEFAULT_GAMMA and exchange_current_prefactor is not None:
+            raise ValueError("Supply either gamma or exchange_current_prefactor, not both")
         # Related to reaction balance
         self.gas = gas
         self.nu = np.array(nu)
@@ -68,7 +81,8 @@ class Kinetic:
         # Related to exchange current density
         self.alpha = alpha
         self.beta = beta
-        self.gamma = gamma
+        self.gamma = 0 if gamma is _DEFAULT_GAMMA else gamma
+        self.exchange_current_prefactor = exchange_current_prefactor
         self.p = np.array(p)
         self.theta = theta
         self.E_act = E_act
@@ -85,11 +99,18 @@ class Kinetic:
         Ps : numpy.ndarray
             Partial pressures [Pa]
         """
-        return (
+        Ps = np.atleast_1d(np.asarray(Ps, dtype=float))
+        p = self.p.reshape((-1,) + (1,) * (Ps.ndim - 1))
+        prefactor = (
             self.gamma
+            if self.exchange_current_prefactor is None
+            else self.exchange_current_prefactor
+        )
+        return (
+            prefactor
             * T**self.theta
             * np.exp(-self.E_act / (R * T))
-            * np.prod((Ps / P_atm) ** self.p)
+            * np.prod((Ps / P_atm) ** p, axis=0)
         )
 
     def mol_flux(self, j: float) -> np.ndarray:
@@ -200,6 +221,11 @@ class ButlerVolmer(Kinetic):
         exponential factor for Arrhenius equation
     E_act : float
         activation energy for Arrhenius equation [J/mol.K]
+    exchange_current_prefactor : float, optional
+        TPB-based pre-exponential kinetic factor [A/(m K^theta)].
+        Keyword-only; cannot be supplied together with gamma.
+        With TPB-based j0, j and its voltage derivatives are per TPB length
+        [A/m] rather than per area. V uses the same current units as j0.
     """
 
     def j(self, V: float, T: float, j0: float) -> float:
@@ -215,9 +241,10 @@ class ButlerVolmer(Kinetic):
         j0 : float
             Exchange current density [A/m^2]
         """
+        V, T, j0 = np.asarray(V), np.asarray(T), np.asarray(j0)
         return j0 * (
-            np.exp(self.alpha * self.n_e * F * V / (R * T))
-            - np.exp(-self.beta * self.n_e * F * V / (R * T))
+            np.expm1(self.alpha * self.n_e * F * V / (R * T))
+            - np.expm1(-self.beta * self.n_e * F * V / (R * T))
         )
 
     def dj_dV(self, V: float, T: float, j0: float) -> float:
@@ -230,6 +257,7 @@ class ButlerVolmer(Kinetic):
         T (float) : Temperature [K]
         j0 (float) : Exchange current density [A/m^2]
         """
+        V, T, j0 = np.asarray(V), np.asarray(T), np.asarray(j0)
         return j0 * (
             self.alpha
             * self.n_e
@@ -256,6 +284,7 @@ class ButlerVolmer(Kinetic):
         j0 : float
             Exchange current density [A/m^2]
         """
+        V, T, j0 = np.asarray(V), np.asarray(T), np.asarray(j0)
         return j0 * (
             (self.alpha * self.n_e * F / (R * T)) ** 2
             * np.exp(self.alpha * self.n_e * F * V / (R * T))
@@ -288,6 +317,8 @@ class ButlerVolmer(Kinetic):
         ----------
         1. https://doi.org/10.1016/j.pecs.2020.100902
         """
+        if any(np.ndim(value) > 0 for value in (j, T, j0)):
+            return np.vectorize(self.V, otypes=[float])(j, T, j0)
         # Finding V guess
         if abs(j) <= j0:
             # Linear approximation
