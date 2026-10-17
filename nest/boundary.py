@@ -14,7 +14,7 @@ class BoundaryData:
     V : float
         voltage (fix or guess) [V]
     j : float
-        current density (fix or guess) [A/cm^2]
+        current density (fix or guess) [A/m^2]
     n_fuel : numpy.ndarray
         molar flow rate - fuel [mol/s]
     n_air : numpy.ndarray

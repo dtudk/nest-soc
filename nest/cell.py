@@ -334,7 +334,7 @@ class Cell:
         boundary : BoundaryData
             boundary state variables
         j : float
-            current density [A/cm^2]
+            current density [A/m^2]
         """
         return (
             boundary.Ps_fuel()
@@ -353,7 +353,7 @@ class Cell:
         boundary : BoundaryData
             boundary state variables
         j : float
-            current density [A/cm^2]
+            current density [A/m^2]
         """
         return (
             boundary.Ps_air()
@@ -407,7 +407,8 @@ class Cell:
         T_out = boundary.T  # Simplified for now - Isothermic
         P_out = boundary.P  # Simplified for now - Isobaric
         return BoundaryData(
-            V=boundary.V, j=j, n_fuel=n_out_fuel, n_air=n_out_air, T=T_out, P=P_out
+            V=boundary.V, j=j, n_fuel=n_out_fuel, n_air=n_out_air, T=T_out, P=P_out,
+            fuel_pressure=boundary.fuel_pressure, air_pressure=boundary.air_pressure,
         )
 
     def solve_for_voltage(self, boundary: BoundaryData, **kwargs) -> np.ndarray:
@@ -608,6 +609,8 @@ class Cell:
                 n_air,
                 steady_solution[2][j],
                 steady_solution[3][j],
+                fuel_pressure=boundary.fuel_pressure,
+                air_pressure=boundary.air_pressure,
             )
             P_fuel_tpb = self.electrode_fuel.Ps_star(
                 steady_solution[1][j],
@@ -627,6 +630,8 @@ class Cell:
                 P_air_tpb,
                 steady_solution[2][j],
                 steady_solution[3][j],
+                fuel_pressure=boundary.fuel_pressure,
+                air_pressure=boundary.air_pressure,
             )
             # 3.2 Calculate rates
             if self.electrode_fuel.degradation.pol_active:

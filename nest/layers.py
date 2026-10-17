@@ -32,7 +32,7 @@ class Kinetic:
     beta : float
         charge transfer coefficient - reverse reaction
     gamma : float
-        pre-exponential kinetic factor [A]
+        pre-exponential kinetic factor [A/(m^2 K^theta)]
     p : numpy.ndarray
         exponential factors for partial pressure dependency
     theta : float
@@ -86,7 +86,7 @@ class Kinetic:
 
     def j_0(self, T: float, Ps: np.ndarray) -> float:
         """
-        Exchange current density [A/m^2]
+        Exchange current density [A/m^2] or current per TPB length [A/m]
 
         Parameters
         ----------
@@ -111,12 +111,13 @@ class Kinetic:
 
     def mol_flux(self, j: float) -> np.ndarray:
         """
-        Molar flux [mol/m^2]
+        Molar flux [mol/(m^2 s)]
 
         Parameters
         ----------
         j : float
-            Current density [A/m^2]
+            Current density [A/m^2], current per TPB length [A/m], or
+            volumetric current [A/m^3].
         """
         return self.nu * j / (self.n_e * F)
 
@@ -195,7 +196,7 @@ class Kinetic:
         T : float
             Temperature [K]
         j0 : float
-            Exchange current density [A/m^2]
+            Exchange current density [A/m^2] or current per TPB length [A/m]
 
         Notes
         -----
@@ -221,7 +222,7 @@ class ButlerVolmer(Kinetic):
     beta : float
         charge transfer coefficient - reverse reaction
     gamma : float
-        pre-exponential kinetic factor [A]
+        pre-exponential kinetic factor [A/(m^2 K^theta)]
     p : numpy.ndarray
         exponential factors for partial pressure dependency
     theta : float
@@ -234,7 +235,7 @@ class ButlerVolmer(Kinetic):
 
     def j(self, V: float, T: float, j0: float) -> float:
         """
-        Current density [A/m^2]
+        Current density [A/m^2] or current per TPB length [A/m]
 
         Parameters
         ----------
@@ -243,7 +244,7 @@ class ButlerVolmer(Kinetic):
         T : float
             Temperature [K]
         j0 : float
-            Exchange current density [A/m^2]
+            Exchange current density [A/m^2] or current per TPB length [A/m]
         """
         V, T, j0 = np.asarray(V), np.asarray(T), np.asarray(j0)
         return j0 * (
@@ -253,13 +254,13 @@ class ButlerVolmer(Kinetic):
 
     def dj_dV(self, V: float, T: float, j0: float) -> float:
         """
-        First derivative of current density by voltage [A/m^2.V]
+        First derivative of current density by voltage [A/m^2.V] or [A/m.V]
 
         Parameters
         ----------
         V (float) : Activation overpotential [V]
         T (float) : Temperature [K]
-        j0 (float) : Exchange current density [A/m^2]
+        j0 (float) : Exchange current density [A/m^2] or current per TPB length [A/m]
         """
         V, T, j0 = np.asarray(V), np.asarray(T), np.asarray(j0)
         return j0 * (
@@ -277,7 +278,7 @@ class ButlerVolmer(Kinetic):
 
     def dj_dV2(self, V: float, T: float, j0: float) -> float:
         """
-        Second derivative of current density by voltage [A/m^2.V^2]
+        Second derivative of current density by voltage [A/m^2.V^2] or [A/m.V^2]
 
         Parameters
         ----------
@@ -286,7 +287,7 @@ class ButlerVolmer(Kinetic):
         T : float
             Temperature [K]
         j0 : float
-            Exchange current density [A/m^2]
+            Exchange current density [A/m^2] or current per TPB length [A/m]
         """
         V, T, j0 = np.asarray(V), np.asarray(T), np.asarray(j0)
         return j0 * (
@@ -303,11 +304,11 @@ class ButlerVolmer(Kinetic):
         Parameters
         ----------
         j : float
-            Current density [A/m^2]
+            Current density [A/m^2] or current per TPB length [A/m]
         T : float
             Temperature [K]
         j0 : float
-            Exchange current density [A/m^2]
+            Exchange current density [A/m^2] or current per TPB length [A/m]
 
         Notes
         -----

@@ -116,7 +116,7 @@ def iv_curve_ce():
     ax.plot(
         currents / 1e4, voltages, marker="o", markersize=5, label="Model", color="r"
     )
-    ax.set_xlabel("Current density (A/m^2)")
+    ax.set_xlabel("Current density (A/cm^2)")
     ax.set_ylabel("Cell voltage (V)")
 
     # Add experimental data for comparison

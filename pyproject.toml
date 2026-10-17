@@ -7,13 +7,13 @@ name = "nest-soc"
 version = "0.3.1"
 description = "Modeling package for solid oxide cells as part of the NEST (Next-gen electrochemical system tools) project"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 license = "MIT"
-license-files = ["LINCENSE"]
+license-files = ["LICENSE"]
 authors = [
     { name = "Rafael Nogueira Nakashima", email = "rafnn@dtu.dk" },
     { name = "Javid Beyrami", email = "jabey@dtu.dk"}]
