@@ -7,7 +7,7 @@ from scipy.optimize import newton
 from scipy.integrate import solve_ivp
 from scipy.constants import pi
 
-from nest.constants import R, F, P_atm
+from nest.constants import R, F, P_atm, P_0
 from nest.properties import Specie, Mixture, BasicSpecies
 from nest.degradation import NoDegradation
 
@@ -130,7 +130,18 @@ class Kinetic:
             Temperature [K]
         Ps : numpy.ndarray
             Partial pressures
+
+        Notes
+        -----
+        For multidimensional Ps, species occupy the first axis and the
+        remaining axes represent spatial locations.
         """
+        if np.ndim(Ps) > 1:
+            potential = self.Vt_nernst_half(T)
+            for nu, partial_pressure in zip(self.nu, Ps):
+                if nu != 0:
+                    potential += R * T / (self.n_e * F) * nu * np.log(partial_pressure / P_0)
+            return potential
         if isinstance(self.gas.species, Specie):
             return self.nu[0] * self.gas.species.g(T, Ps[0]) / (self.n_e * F)
         else:

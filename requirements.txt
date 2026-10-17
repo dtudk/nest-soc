@@ -2,4 +2,3 @@ numpy>=2.3.2
 scipy>=1.16.2
 matplotlib>=3.10.6
 pandas>=2.3.1
-scikit-sundae>=1.1.2
