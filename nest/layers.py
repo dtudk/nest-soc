@@ -670,6 +670,11 @@ class Layer:
         flags if degradation for ohmic resistance is active
     elements : int, optional
         number of elements for spatial discretization of layer
+    tpb_density : float, optional
+        Triple-phase-boundary length per electrode volume [m^-2].
+        for volumetric Faradaic current with TPB-based kinetics.
+    capacitance_volumetric : float, optional
+        Volumetric double-layer capacitance [F/m^3].
     """
 
     def __init__(
@@ -680,6 +685,8 @@ class Layer:
         transport=PorousTransport(),
         degradation=NoDegradation(),
         elements=2,
+        tpb_density=None,
+        capacitance_volumetric=None,
     ):
         self.delta = delta
         self.kinetic = kinetic
@@ -687,6 +694,27 @@ class Layer:
         self.transport = transport
         self.degradation = degradation
         self.elements = elements
+        self.tpb_density = tpb_density
+        self.capacitance_volumetric = capacitance_volumetric
+
+    def i_F_vol(self, V, T, Ps):
+        """
+        Volumetric Faradaic current [A/m^3] for TPB-based Butler-Volmer kinetics.
+
+        Parameters
+        ----------
+        V : float or numpy.ndarray
+            Activation overpotential [V].
+        T : float
+            Temperature [K].
+        Ps : numpy.ndarray
+            Partial pressures [Pa], with species on the first axis.
+        """
+        if getattr(self.kinetic, "exchange_current_prefactor", None) is None:
+            raise ValueError("i_F_vol requires TPB-based kinetics")
+        if not isinstance(self.kinetic, ButlerVolmer):
+            raise TypeError("i_F_vol requires a ButlerVolmer kinetic model")
+        return self.tpb_density * self.kinetic.j(V, T, self.kinetic.j_0(T, Ps))
 
     def V_ohm(self, j: float, T: float, **kwargs) -> float:
         """
@@ -721,6 +749,8 @@ class Layer:
         pol_ratio : float, optional
             ratio of active reaction area compared to begining of life [m]
         """
+        if getattr(self.kinetic, "exchange_current_prefactor", None) is not None:
+            raise ValueError("V_act requires area-based kinetics")
         j_0 = self.kinetic.j_0(T, Ps)
         if self.degradation.pol_active:
             j_0 *= self.degradation.pol_deg(kwargs["pol_deg"])
