@@ -51,7 +51,7 @@ def _parameters(name, value):
 
 
 def save_results(model, filename, *, steady=None, solution=None, protocol=None,
-                 frequencies=None, Z=None):
+                 frequencies=None, Z=None, circuit=None, source_voltage=0.0):
     """Save simulation data to an Excel workbook.
 
     Parameters
@@ -68,6 +68,10 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
         Command created by voltage_ramp or current_interrupt; required with solution.
     frequencies, Z : array_like, optional
         Frequencies [Hz] and complex impedance [ohm m^2].
+    circuit : ExternalCircuit, optional
+        Circuit used in the simulation; saves L, C, and both resistances.
+    source_voltage : float, optional
+        Source voltage used in the simulation [V]. Default is 0.
 
     Returns
     -------
@@ -77,6 +81,7 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
     Notes
     -----
     Exports all spatial fields and splits worksheets at Excel's row limit.
+    Circuit solutions also export capacitor voltage and total current.
     """
     from openpyxl import Workbook
     from openpyxl.cell import WriteOnlyCell
@@ -144,6 +149,17 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
         for entry in _parameters(name, value):
             add("parameters", ["parameter_SI", "value"], entry)
 
+    if circuit is not None:
+        for name, value in (
+            ("circuit.inductance_H", circuit.inductance),
+            ("circuit.wiring_resistance_ohm", circuit.wiring_resistance),
+            ("circuit.shunt_resistance_ohm", circuit.shunt_resistance),
+            ("circuit.resistance_ohm", circuit.resistance),
+            ("circuit.capacitance_F", circuit.capacitance),
+            ("circuit.source_voltage_V", source_voltage),
+        ):
+            add("parameters", ["parameter_SI", "value"], [name, value])
+
     for region, faces, centers in (
         ("channel", model.grid.x_faces, model.grid.x),
         ("air_channel", model.grid.x_air_faces, model.grid.x_air),
@@ -159,8 +175,14 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
         state, voltage = steady
         snapshot("steady", None, getattr(state, "x", state), voltage)
     if solution is not None:
-        for t, state in zip(solution.t, solution.y.T):
-            snapshot("transient", t, state, _voltage(model, state, protocol, t))
+        for index, (t, state) in enumerate(zip(solution.t, solution.y.T)):
+            voltage = (solution.voltage[index] if hasattr(solution, "voltage")
+                       else _voltage(model, state, protocol, t))
+            snapshot("transient", t, state, voltage)
+            if hasattr(solution, "capacitor_voltage"):
+                add("transient_circuit",
+                    ["time_s", "current_A", "capacitor_voltage_V"],
+                    [t, solution.current[index], solution.capacitor_voltage[index]])
             add("command", ["time_s", "control", "value"],
                 [t, protocol.control_mode, protocol(t)])
     if Z is not None:
@@ -184,7 +206,7 @@ def _save_plot(fig, filename):
     return path
 
 
-def plot_impedance(cases, filename, *, experiment=None):
+def plot_impedance(cases, filename, *, experiment=None, imaginary_ylim=None):
     """Save Nyquist and frequency plots.
 
     Parameters
@@ -195,6 +217,9 @@ def plot_impedance(cases, filename, *, experiment=None):
         Output SVG path.
     experiment : str or Path, optional
         Data file containing frequency, Re(Z), and -Im(Z).
+    imaginary_ylim : tuple, optional
+        Display limits (minimum, maximum) for -Im(Z) [ohm m^2].
+        Applies to the Nyquist and imaginary-frequency panels.
 
     Returns
     -------
@@ -218,15 +243,21 @@ def plot_impedance(cases, filename, *, experiment=None):
                                   (imag, real, imag)):
         ax.set(xlabel=xlabel, ylabel=ylabel)
         ax.grid(True, alpha=0.2)
+    if imaginary_ylim is not None:
+        axes[0].set_ylim(imaginary_ylim)
+        axes[2].set_ylim(imaginary_ylim)
     axes[1].legend()
     return _save_plot(fig, filename)
 
 
-def _trace(model, state, protocol, t, quantity, side, region, species, location):
+def _trace(model, state, protocol, t, quantity, side, region, species, location,
+           voltage=None):
+    if voltage is None:
+        voltage = _voltage(model, state, protocol, t)
     if quantity == "voltage":
-        return _voltage(model, state, protocol, t)
+        return voltage
     if quantity == "current":
-        values = model.current_density(state, _voltage(model, state, protocol, t))
+        values = model.current_density(state, voltage)
     elif quantity == "overpotential":
         fuel, air = model.overpotentials(state)
         values = {"fuel": fuel[-1], "air": air[0]}[side]
@@ -282,9 +313,10 @@ def plot_transient(cases, filename, *, quantity="voltage", location="mean",
     }[quantity]
     fig, ax = plt.subplots(figsize=(5.6, 3.6), layout="constrained")
     for label, (model, solution, protocol) in cases.items():
-        values = [_trace(model, y, protocol, t, quantity, side, region, species, location)
-                  for t, y in zip(solution.t, solution.y.T)]
-        before = _trace(model, solution.y[:, 0], protocol,
+        voltages = getattr(solution, "voltage", [None] * len(solution.t))
+        values = [_trace(model, y, protocol, t, quantity, side, region, species, location, v)
+                  for t, y, v in zip(solution.t, solution.y.T, voltages)]
+        before = values[0] if hasattr(solution, "voltage") else _trace(model, solution.y[:, 0], protocol,
                         np.nextafter(solution.t[0], -np.inf),
                         quantity, side, region, species, location)
         ax.plot(np.r_[solution.t[0], solution.t] + (1e-10 if log_time else 0),

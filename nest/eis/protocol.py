@@ -15,6 +15,7 @@ class _Protocol:
     value_at_time: Callable[[float], float]
     control_mode: str = "voltage"
     change_time: float | None = None
+    current_before: float | None = None
 
     def __call__(self, t: float) -> float:
         return self.value_at_time(t)
@@ -69,5 +70,6 @@ def current_interrupt(
     return _Protocol(
         lambda t: current_before if t < at else 0.0,
         control_mode="current",
-        change_time=at if current_before != 0 else None,
+        change_time=at,
+        current_before=current_before,
     )

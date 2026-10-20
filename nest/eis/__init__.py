@@ -1,6 +1,7 @@
 """Distributed electrochemical and gas-transport model."""
 
 from .model import Model
+from .circuit import ExternalCircuit
 from .solver import solve_steady, solve_transient
 from .protocol import voltage_ramp, current_interrupt
 from .impedance import impedance
@@ -10,5 +11,6 @@ __all__ = [
     "Model", 
     "solve_steady", "solve_transient", 
     "voltage_ramp", "current_interrupt",
+    "ExternalCircuit",
     "impedance", "plot_impedance", "plot_transient", "save_results"
 ]

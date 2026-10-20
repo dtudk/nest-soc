@@ -10,6 +10,7 @@ from nest.constants import F, R
 
 from .model import Model
 from .protocol import _Protocol
+from .circuit import ExternalCircuit
 
 __all__ = ["solve_steady", "solve_transient"]
 
@@ -119,6 +120,8 @@ def solve_transient(
     t_eval: np.ndarray | None = None,
     rtol: float = 1e-5,
     atol: float = 1e-7,
+    circuit: ExternalCircuit | None = None,
+    source_voltage: float = 0.0,
 ):
     """Integrate the cell response using BDF.
 
@@ -137,15 +140,24 @@ def solve_transient(
     rtol : float, optional
         Relative tolerance. Default is 1e-5.
     atol : float or array_like, optional
-        Absolute tolerance in state units [V and mol/m^3]. Default is 1e-7.
+        Absolute tolerance per state. Default is 1e-7.
+        For an array, include I [A] and V_C [V] when using a circuit.
+    circuit : ExternalCircuit, optional
+        External RLC circuit used to calculate non-ideal current interrupt.
+    source_voltage : float, optional
+        Constant source voltage opposing the cell [V]. Default is 0.
 
     Returns
     -------
     solution : OdeResult
-        Times [s] in t and state vectors in the columns of y.
+        Times [s] in t and cell states in y.
+        With a circuit, also includes current [A], current_density [A/m^2],
+        voltage [V], and capacitor_voltage [V].
     """
     y0 = model.initial_state() if initial_state is None else np.asarray(initial_state, dtype=float).copy()
     start, end = t_span
+    if circuit is not None:
+        y0 = np.r_[y0, protocol.current_before * model.cell.area, 0.0]
 
     if protocol.change_time is not None and start < protocol.change_time < end:
         segment_edges = [start, protocol.change_time, end]
@@ -157,8 +169,17 @@ def solve_transient(
     for i in range(len(segment_edges) - 1):
         segment_start = segment_edges[i]
         segment_end = segment_edges[i + 1]
+        circuit_active = circuit is not None and segment_start >= protocol.change_time
         def _time_derivatives(t: float, y: np.ndarray) -> np.ndarray:
             """Calculate state time derivatives using the protocol's voltage or current."""
+            if circuit is not None:
+                cell_state, current, capacitor_voltage = y[:-2], y[-2], y[-1]
+                voltage = model.voltage_for_current(cell_state, current / model.cell.area)
+                cell_rate = model.time_derivatives(t, cell_state, voltage)
+                circuit_rate = circuit.derivatives(
+                    current, capacitor_voltage, voltage, source_voltage
+                ) if circuit_active else (0.0, 0.0)
+                return np.r_[cell_rate, circuit_rate]
             if protocol.control_mode == "current":
                 if t == segment_end == protocol.change_time:
                     t = np.nextafter(segment_end, segment_start)
@@ -198,4 +219,13 @@ def solve_transient(
 
     solution.t, solution.y = np.concatenate(times), np.concatenate(states, axis=1)
     solution.nfev, solution.njev, solution.nlu = nfev, njev, nlu
+    if circuit is not None:
+        solution.current = solution.y[-2].copy()
+        solution.capacitor_voltage = solution.y[-1].copy()
+        solution.y = solution.y[:-2]
+        solution.current_density = solution.current / model.cell.area
+        solution.voltage = np.array([
+            model.voltage_for_current(state, current_density)
+            for state, current_density in zip(solution.y.T, solution.current_density)
+        ])
     return solution
