@@ -334,7 +334,9 @@ class NickelAgglomeration(Degradation):
         """
         return psi_i / r_i**3 / (psi_i / r_i**3 + psi_j / r_j**3)
 
-    def material_dt(self, m: float, state: BoundaryData, time: float) -> float:
+    def material_dt(
+        self, m: float, state: BoundaryData, time: float, **kwargs
+    ) -> float:
         """
         Ni radius rate of change [μm/h]
 
@@ -399,7 +401,7 @@ class NickelAgglomeration(Degradation):
                 k * np.exp(-self.E_act / (R * state.T)) / (r * 2) ** 7
             )  # unit conversion
 
-    def pol_deg(self, m):
+    def pol_deg(self, m, **kwargs):
         """
         Returns the polarization degradation ratio
         In this case, actually the effective TPB length [1/m^2]
@@ -439,7 +441,7 @@ class InterconnectOxidation(Degradation):
         self.pol_active = False
         self.ohm_active = ohm_active
 
-    def material_dt(self, m, state, time):
+    def material_dt(self, m, state, time, **kwargs):
         """
         Interconnect oxidation rate [Wagner's theory]
 
@@ -494,7 +496,7 @@ class ChromiumPoison(Degradation):
         self.pol_active = pol_active
         self.ohm_active = False
 
-    def material_dt(self, m, state, time):
+    def material_dt(self, m, state, time, **kwargs):
         """
         Chromium poisoning rate
 

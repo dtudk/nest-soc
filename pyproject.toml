@@ -14,19 +14,52 @@ classifiers = [
 ]
 license = "MIT"
 license-files = ["LICENSE"]
+
 authors = [
     { name = "Rafael Nogueira Nakashima", email = "rafnn@dtu.dk" },
     { name = "Javid Beyrami", email = "jabey@dtu.dk"}]
+
 maintainers = [
     { name = "Javid Beyrami", email = "jabey@dtu.dk" },
     { name = "Rafael Nogueira Nakashima", email = "rafnn@dtu.dk" }
 ]
-dependencies = ["numpy>=2.3.2", "scipy>=1.16.2", "matplotlib>=3.10.6", "pandas>=2.3.1", "openpyxl"]
-keywords = ["sofc", "soec", "fuel cell", "electrolysis", "hydrogen", "degradation"]
 
-[project.optional-dependencies]
-dev = ["build >= 1.3", "pytest>=7.4", "ruff>=0.6"]
+dependencies = [
+    "numpy>=2.3.2",
+    "scipy>=1.16.2",
+    "matplotlib>=3.10.6",
+    "pandas>=2.3.1",
+    "openpyxl",
+    "ipython>=9.17.1",
+]
+
+keywords = [
+    "sofc",
+    "soec",
+    "fuel cell",
+    "electrolysis",
+    "hydrogen",
+    "degradation"
+]
 
 [project.urls]
 Homepage = "https://github.com/dtudk/nest-soc"
 Issues = "https://github.com/dtudk/nest-soc/issues"
+
+[tool.setuptools.packages.find]
+include = ["nest*"]
+
+[tool.ty.src]
+exclude = ["nest/examples/tutorials/**/*.ipynb"]
+
+[dependency-groups]
+dev = [
+    "deptry>=0.25.1",
+    "build >= 1.3",
+    "pytest>=7.4",
+    "ruff>=0.6",
+]
+notebook = [
+    "ipykernel>=7.4.0",
+    "jupyter>=1.1.1",
+]

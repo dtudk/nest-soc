@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from nest.eis import impedance
+from nest.packages.eis import impedance
 
 
 R0 = 1.1e-5   # Ohmic resistance
@@ -55,6 +55,3 @@ def test_voltage_step_impedance():
         current_before=0,
     )
     np.testing.assert_allclose(z, expected_impedance(), rtol=2e-5, atol=1e-6)
-
-
-

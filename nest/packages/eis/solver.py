@@ -59,9 +59,9 @@ def solve_steady(
         model.cell.electrode_air.capacitance_volumetric * model.grid.dz_air,
         F * model.cell.electrode_fuel.transport.epsilon * model.grid.dz_fuel,
         F * model.cell.electrode_air.transport.epsilon * model.grid.dz_air,
-        F * model.cell.fuel_channel.width * model.cell.fuel_channel.height / model.width_active,
-        F * model.cell.air_channel.width * model.cell.air_channel.height
-        / (model.cell.area / model.cell.air_channel.length),
+        F * model.fuel_channel.width * model.fuel_channel.height / model.width_active,
+        F * model.air_channel.width * model.air_channel.height
+        / (model.cell.area / model.air_channel.length),
         F * model.support_transport.epsilon * model.grid.dz_support,
     )
     flux_scale = np.repeat(flux_scales, [field.size for field in state_fields])

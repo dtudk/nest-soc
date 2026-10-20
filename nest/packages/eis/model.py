@@ -61,12 +61,16 @@ class Model:
         self.n_zs = n_zs if support_thickness > 0 else 0
         self.T = float(boundary.T)
 
+        if cell.fuel_channel is None or cell.air_channel is None:
+            raise ValueError("EIS model requires cell.fuel_channel and cell.air_channel")
+        self.fuel_channel, self.air_channel = cell.fuel_channel, cell.air_channel
+
         fuel, air = cell.electrode_fuel, cell.electrode_air
-        self.grid = _Grid(cell.fuel_channel.length, fuel.delta, air.delta,
+        self.grid = _Grid(self.fuel_channel.length, fuel.delta, air.delta,
                           n_x, n_zf, n_za, support_thickness, self.n_zs,
-                          cell.air_channel.length)
+                          self.air_channel.length)
         self.support_transport = fuel.transport if support is None else support.transport
-        self.width_active = cell.area / cell.fuel_channel.length
+        self.width_active = cell.area / self.fuel_channel.length
         self.fuel_pressure = boundary.fuel_pressure
         self.air_pressure = boundary.air_pressure
 
@@ -81,9 +85,9 @@ class Model:
         )
 
         self.c_in_f, self.u_in_f = self._inlet_conditions(
-            boundary.n_fuel, self.fuel_pressure, cell.fuel_channel)
+            boundary.n_fuel, self.fuel_pressure, self.fuel_channel)
         self.c_in_a, self.u_in_a = self._inlet_conditions(
-            boundary.n_air, self.air_pressure, cell.air_channel)
+            boundary.n_air, self.air_pressure, self.air_channel)
         self._shapes = (
             (n_zf, n_x), (n_za, n_x),                   # Electrode potentials
             (2, n_zf, n_x), (2, n_za, n_x),             # Electrode concentrations
@@ -377,10 +381,10 @@ class Model:
         """
         if side == "fuel":
             inlet_concentrations, inlet_velocity = self.c_in_f, self.u_in_f
-            geometry, pressure = self.cell.fuel_channel, self.fuel_pressure
+            geometry, pressure = self.fuel_channel, self.fuel_pressure
         else:
             inlet_concentrations, inlet_velocity = self.c_in_a, self.u_in_a
-            geometry, pressure = self.cell.air_channel, self.air_pressure
+            geometry, pressure = self.air_channel, self.air_pressure
 
         spacing = geometry.length / self.n_x
         width_active = self.cell.area / geometry.length

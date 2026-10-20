@@ -12,9 +12,6 @@ from nest.properties import Specie, Mixture, BasicSpecies
 from nest.degradation import NoDegradation
 
 
-_DEFAULT_GAMMA = object()
-
-
 class Kinetic:
     """
     Kinetic model for eletrochemical reaction
@@ -56,19 +53,19 @@ class Kinetic:
 
     def __init__(
         self,
-        gas=(BasicSpecies.H2,),
+        gas: Mixture = Mixture((BasicSpecies.H2,)),
         nu=np.array([0]),
         n_e=2,
         alpha=0,
         beta=0,
-        gamma=_DEFAULT_GAMMA,
+        gamma: float | None = None,
         p=np.array([0]),
         theta=1,
         E_act=0,
         C=1e-5,
         exchange_current_prefactor=None,
     ):
-        if gamma is not _DEFAULT_GAMMA and exchange_current_prefactor is not None:
+        if gamma is not None and exchange_current_prefactor is not None:
             raise ValueError("Supply either gamma or exchange_current_prefactor, not both")
         # Related to reaction balance
         self.gas = gas
@@ -77,7 +74,7 @@ class Kinetic:
         # Related to exchange current density
         self.alpha = alpha
         self.beta = beta
-        self.gamma = 0 if gamma is _DEFAULT_GAMMA else gamma
+        self.gamma = 0.0 if gamma is None else gamma
         self.exchange_current_prefactor = exchange_current_prefactor
         self.p = np.array(p)
         self.theta = theta
@@ -233,7 +230,9 @@ class ButlerVolmer(Kinetic):
         TPB-based pre-exponential kinetic factor [A/(m K^theta)].
     """
 
-    def j(self, V: float, T: float, j0: float) -> float:
+    def j(
+        self, V: float | np.ndarray, T: float | np.ndarray, j0: float | np.ndarray
+    ) -> float | np.ndarray:
         """
         Current density [A/m^2] or current per TPB length [A/m]
 
@@ -252,7 +251,9 @@ class ButlerVolmer(Kinetic):
             - np.expm1(-self.beta * self.n_e * F * V / (R * T))
         )
 
-    def dj_dV(self, V: float, T: float, j0: float) -> float:
+    def dj_dV(
+        self, V: float | np.ndarray, T: float | np.ndarray, j0: float | np.ndarray
+    ) -> float | np.ndarray:
         """
         First derivative of current density by voltage [A/m^2.V] or [A/m.V]
 
@@ -276,7 +277,9 @@ class ButlerVolmer(Kinetic):
             * np.exp(-self.beta * self.n_e * F * V / (R * T))
         )
 
-    def dj_dV2(self, V: float, T: float, j0: float) -> float:
+    def dj_dV2(
+        self, V: float | np.ndarray, T: float | np.ndarray, j0: float | np.ndarray
+    ) -> float | np.ndarray:
         """
         Second derivative of current density by voltage [A/m^2.V^2] or [A/m.V^2]
 
@@ -487,7 +490,7 @@ class PorousTransport:
 
     def dP_dl(
         self, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture, delta: float
-    ) -> float:
+    ) -> np.ndarray:
         """
         Pressure drop along layer thickness [Pa/m]
 
@@ -701,7 +704,7 @@ class StefanMaxwell(PorousTransport):
             return dc_dy
 
     def dP_dl(
-        self, mol_flux: float, T: float, P: np.ndarray, gas: Mixture, delta: float
+        self, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture, delta: float
     ) -> np.ndarray:
         """
         Partial pressures at the reaction site [Pa]
@@ -766,8 +769,8 @@ class Layer:
         transport=PorousTransport(),
         degradation=NoDegradation(),
         elements=2,
-        tpb_density=None,
-        capacitance_volumetric=None,
+        tpb_density: float | None = None,
+        capacitance_volumetric: float | None = None,
     ):
         self.delta = delta
         self.kinetic = kinetic
@@ -795,6 +798,8 @@ class Layer:
             raise ValueError("i_F_vol requires TPB-based kinetics")
         if not isinstance(self.kinetic, ButlerVolmer):
             raise TypeError("i_F_vol requires a ButlerVolmer kinetic model")
+        if self.tpb_density is None:
+            raise ValueError("i_F_vol requires tpb_density")
         return self.tpb_density * self.kinetic.j(V, T, self.kinetic.j_0(T, Ps))
 
     def V_ohm(self, j: float, T: float, **kwargs) -> float:

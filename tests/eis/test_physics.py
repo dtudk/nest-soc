@@ -7,7 +7,7 @@ import numpy as np
 from nest.constants import F, R, P_atm
 from nest.layers import Layer, PorousTransport
 from nest.properties import BasicSpecies, Mixture
-from nest.eis import Model
+from nest.packages.eis import Model
 
 
 
@@ -58,9 +58,9 @@ def test_species_conservation(model):
 
     sides = (
         (model.cell.electrode_fuel, c_cf, dc_cf, dc_pf, dc_ps,
-         model.c_in_f, model.u_in_f, model.fuel_pressure, model.cell.fuel_channel),
+         model.c_in_f, model.u_in_f, model.fuel_pressure, model.fuel_channel),
         (model.cell.electrode_air, c_ca, dc_ca, dc_pa, None,
-         model.c_in_a, model.u_in_a, model.air_pressure, model.cell.air_channel),
+         model.c_in_a, model.u_in_a, model.air_pressure, model.air_channel),
     )
 
     dx = model.grid.dx

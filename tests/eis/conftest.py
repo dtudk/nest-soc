@@ -6,7 +6,7 @@ from nest.boundary import BoundaryData
 from nest.cell import Cell, ChannelGeometry
 from nest.layers import ButlerVolmer, Conductivity, Layer, PorousTransport
 from nest.properties import BasicSpecies, Mixture
-from nest.eis import Model
+from nest.packages.eis import Model
 
 
 @pytest.fixture
