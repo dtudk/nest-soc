@@ -206,7 +206,8 @@ def _save_plot(fig, filename):
     return path
 
 
-def plot_impedance(cases, filename, *, experiment=None, imaginary_ylim=None):
+def plot_impedance(cases, filename, *, experiment=None, 
+                   imaginary_ylim=None, real_lim=None):
     """Save Nyquist and frequency plots.
 
     Parameters
@@ -219,7 +220,8 @@ def plot_impedance(cases, filename, *, experiment=None, imaginary_ylim=None):
         Data file containing frequency, Re(Z), and -Im(Z).
     imaginary_ylim : tuple, optional
         Display limits (minimum, maximum) for -Im(Z) [ohm m^2].
-        Applies to the Nyquist and imaginary-frequency panels.
+    real_lim : tuple, optional
+        Display limits (minimum, maximum) for Re(Z) [ohm m^2].
 
     Returns
     -------
@@ -246,6 +248,9 @@ def plot_impedance(cases, filename, *, experiment=None, imaginary_ylim=None):
     if imaginary_ylim is not None:
         axes[0].set_ylim(imaginary_ylim)
         axes[2].set_ylim(imaginary_ylim)
+    if real_lim is not None:
+        axes[0].set_xlim(real_lim)
+        axes[1].set_ylim(real_lim)
     axes[1].legend()
     return _save_plot(fig, filename)
 
