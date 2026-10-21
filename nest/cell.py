@@ -182,6 +182,10 @@ class Cell:
         delta is the support thickness [m].
         transport defines porosity, tortuosity, and pore diameter [m].
         The support is used for gas transport only.
+    energy_balance : bool, optional
+        If True, the temperature along the cell follows an adiabatic energy
+        balance: the heat released in each element, j*A*(V - V_thermoneutral),
+        heats the fuel and air flows. If False (default), the cell is isothermal.
 
     """
 
@@ -197,6 +201,7 @@ class Cell:
         fuel_channel: ChannelGeometry | None = None,
         air_channel: ChannelGeometry | None = None,
         fuel_support=None,
+        energy_balance: bool = False,
     ):
         self.area = area
         self.electrode_fuel = electrode_fuel
@@ -208,6 +213,7 @@ class Cell:
         self.fuel_channel = fuel_channel
         self.air_channel = air_channel
         self.fuel_support = fuel_support
+        self.energy_balance = energy_balance
 
     def V_nernst(self, T: float, Ps_fuel: np.ndarray, Ps_air: np.ndarray) -> float:
         """
@@ -256,6 +262,28 @@ class Cell:
             self.electrode_fuel.kinetic.V_thermoneutral_half(T)
             + self.electrode_air.kinetic.V_thermoneutral_half(T)
         )
+
+    @staticmethod
+    def heat_capacity_flow(gas, n: np.ndarray, T: float) -> float:
+        """
+        Heat capacity flow of a gas stream [W/K]
+
+        Parameters
+        ----------
+        gas : Mixture
+            gas species
+        n : numpy.ndarray
+            molar flow rates [mol/s]
+        T : float
+            temperature [K]
+
+        Returns
+        -------
+        float
+            Heat capacity flow [W/K]
+        """
+        species = gas.species if isinstance(gas.species, (tuple, list)) else (gas.species,)
+        return sum(n_i * specie.cp(T) for n_i, specie in zip(n, species))
 
     def Vt_nernst(self, T: float) -> float:
         """
@@ -452,7 +480,7 @@ class Cell:
 
         Notes
         -----
-        * For now it neglects energy balance and pressure drops.
+        * Pressure drops are neglected; the energy balance is optional (see Cell).
         * Problem uses center difference method to improve convergence and
           reduce number of area elements
         * JAX autodiff is not compatible, because scipy.optimize.newton is not compatible
@@ -476,13 +504,13 @@ class Cell:
         # Record solution
         n_out_fuel = boundary.n_fuel + self.dn_fuel(j, boundary)
         n_out_air = boundary.n_air + self.dn_air(j)
-        """
-        C_fuel = sum(n_out_i * gas_i.cp(boundary.T) for n_out_i, gas_i in zip(n_out_fuel, self.electrode_fuel.kinetic.gas.species))
-        C_air = sum(n_out_i * gas_i.cp(boundary.T) for n_out_i, gas_i in zip(n_out_air, self.electrode_air.kinetic.gas.species))
-        V_thermo = self.V_thermoneutral(boundary.T)
-        T_out = boundary.T+j*self.area/self.elements*(V_thermo-boundary.V)/(C_fuel+C_air)
-        """
-        T_out = boundary.T  # Simplified for now - Isothermic
+        T_out = boundary.T
+        if self.energy_balance:
+            # Adiabatic: heat released j*A*(V_thermoneutral - V) heats both flows
+            C_fuel = self.heat_capacity_flow(self.electrode_fuel.kinetic.gas, n_out_fuel, boundary.T)
+            C_air = self.heat_capacity_flow(self.electrode_air.kinetic.gas, n_out_air, boundary.T)
+            heat = j * self.area / self.elements * (self.V_thermoneutral(boundary.T) - boundary.V)
+            T_out = boundary.T + heat / (C_fuel + C_air)
         P_out = boundary.P  # Simplified for now - Isobaric
         return BoundaryData(
             V=boundary.V,
@@ -778,7 +806,8 @@ class Cell:
                 if layer.degradation.ohm_active:
                     in_b.V = steady_solution[index + 2 + k][j]
                     ohm_deg_dt[i + j * n_ohm_deg] = layer.degradation.material_dt(
-                        y[i + j * n_ohm_deg + n_pol_deg * self.elements], in_b, t
+                        y[i + j * n_ohm_deg + n_pol_deg * self.elements], in_b, t,
+                        eta_fuel=steady_solution[index][j],     # in case ni migration depends on overpotential
                     )
                     i += 1
         power_dt = [boundary.j * boundary.V]

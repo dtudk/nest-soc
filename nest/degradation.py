@@ -529,6 +529,96 @@ class NickelAgglomeration(Degradation):
         return 0
 
 
+class NickelMigration(Degradation):
+    """
+    Degradation model for Ni migration in the fuel electrode
+
+    Ni particles migrate away from the fuel electrode/electrolyte interface,
+    leaving a Ni-depleted zone that conducts only ions and adds ohmic
+    resistance (like a thicker electrolyte). The Ni migration rate can depend
+    on temperature, current density, and fuel electrode overpotential, 
+    or on only some of them, depending on the case. 
+    Once a threshold is reached, the migration can follow a different rate.
+    The threshold can also depend on T, j, eta.
+
+    Parameters
+    ----------
+    rate : callable
+        rate(T, j, eta) -> growth rate of the Ni-depleted zone thickness [m/h],
+        with T [K], j [A/m^2], and eta [V].
+        All three are always passed; a rate that does not depend on one of them is ignored.
+    threshold : callable, optional
+        threshold(T, j, eta) -> True when the threshold is reached,
+        All three are always passed, as for `rate`
+    rate_after_threshold : callable, optional
+        same as `rate`; used once the threshold is reached
+    ohm_active : bool, optional
+        activates the ohmic degradation modeling in simulation
+    """
+
+    def __init__(self, rate, threshold=None, rate_after_threshold=None, ohm_active=True):
+        self.m0 = 0
+        self.rate = rate
+        self.threshold = threshold
+        self.rate_after_threshold = rate_after_threshold
+        self.pol_active = False
+        self.ohm_active = ohm_active
+
+    def threshold_reached(self, T: float, j: float, eta: float) -> bool:
+        """
+        Flags if the threshold is reached
+
+        Parameters
+        ----------
+        T : float
+            temperature [K]
+        j : float
+            current density [A/m^2]
+        eta : float
+            fuel electrode overpotential [V]
+        """
+        if self.threshold is None or self.rate_after_threshold is None:
+            return False
+        return bool(self.threshold(T, j, eta))
+
+    def material_dt(self, m, state, time, **kwargs):
+        """
+        Ni-depleted zone growth rate [m/h]
+
+        Parameters
+        ----------
+        m : float
+            Ni-depleted zone thickness [m]
+        state : BoundaryData
+            state variables
+        time : float
+            time (h) related to degradation
+        eta_fuel : float
+            fuel electrode overpotential [V], calculated by the cell model
+        """
+        eta_fuel = kwargs["eta_fuel"]
+        if self.threshold_reached(state.T, state.j, eta_fuel):
+            return self.rate_after_threshold(state.T, state.j, eta_fuel)
+        return self.rate(state.T, state.j, eta_fuel)
+
+    def pol_deg(self, *args, **kwargs):
+        """
+        Returns null, as no polarization degradation is considered
+        """
+        return 0
+
+    def ohm_deg(self, m, **kwargs):
+        """
+        Returns the Ni-depleted zone thickness [m]
+
+        Parameters
+        ----------
+        m : float
+            Ni-depleted zone thickness [m]
+        """
+        return m
+
+
 class InterconnectOxidation(Degradation):
     """
     Degradation model for interconnect corrosion.
