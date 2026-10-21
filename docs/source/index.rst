@@ -22,3 +22,4 @@ Check out the :doc:`usage` section for further information.
    :caption: Contents:
 
    usage
+   development

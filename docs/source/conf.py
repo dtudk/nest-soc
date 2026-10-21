@@ -32,6 +32,7 @@ html_theme = "furo"
 # -- Auto-api setup ----------------------------------------------------------
 
 autoapi_dirs = ["../../nest"]
+autoapi_ignore = ["*/examples/*"]
 autoapi_options = [
     "members",
     "undoc-members",
