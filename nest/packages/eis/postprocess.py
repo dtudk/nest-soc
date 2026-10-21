@@ -179,8 +179,7 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
     if steady is not None:
         state, voltage = steady
         snapshot("steady", None, getattr(state, "x", state), voltage)
-<<<<<<< HEAD:nest/eis/postprocess.py
-    if solution is not None:
+    if solution is not None and protocol is not None:
         for index, (t, state) in enumerate(zip(solution.t, solution.y.T)):
             voltage = (solution.voltage[index] if hasattr(solution, "voltage")
                        else _voltage(model, state, protocol, t))
@@ -189,11 +188,6 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
                 add("transient_circuit",
                     ["time_s", "current_A", "capacitor_voltage_V"],
                     [t, solution.current[index], solution.capacitor_voltage[index]])
-=======
-    if solution is not None and protocol is not None:
-        for t, state in zip(solution.t, solution.y.T):
-            snapshot("transient", t, state, _voltage(model, state, protocol, t))
->>>>>>> 0424770c0baa875ca7e97406d86781a8d2a62185:nest/packages/eis/postprocess.py
             add("command", ["time_s", "control", "value"],
                 [t, protocol.control_mode, protocol(t)])
     if Z is not None and frequencies is not None:

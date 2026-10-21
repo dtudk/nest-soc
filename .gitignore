@@ -17,7 +17,9 @@ misc/
 
 ## Tutorials
 nest/examples/tutorials/tutorial_results/*
-# ^^ No need to push figures
+
+## Javid's examples
+nest/examples/javid_examples/
 
 nest/examples/tutorials/*.py
 # ^^ Oliver's way to run notebooks
