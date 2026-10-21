@@ -54,16 +54,16 @@ class Kinetic:
 
     def __init__(
         self,
-        gas: Mixture = Mixture((BasicSpecies.H2,)),
-        nu=np.array([0]),
-        n_e=2,
-        alpha=0,
-        beta=0,
+        gas: Mixture | Specie = Mixture((BasicSpecies.H2,)),
+        nu: np.ndarray = np.array([0]),
+        n_e: float = 2.0,
+        alpha: float = 0.0,
+        beta: float =0,
         gamma: float | None = None,
-        p=np.array([0]),
-        theta=1,
-        E_act=0,
-        C=1e-5,
+        p: np.ndarray = np.array([0]),
+        theta: float = 1.0,
+        E_act: float = 0.0,
+        C: float = 1e-5,
         exchange_current_prefactor=None,
     ):
         if gamma is not None and exchange_current_prefactor is not None:
