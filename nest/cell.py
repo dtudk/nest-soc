@@ -377,7 +377,7 @@ class Cell:
         -----
         * For now it neglects energy balance and pressure drops.
         * Problem uses center difference method to improve convergence and
-        reduce number of area elements
+          reduce number of area elements
         * JAX autodiff is not compatible, because scipy.optimize.newton is not compatible
         * auto-diff package is not compatible, because it has not been updated to new numpy versions
         """

@@ -29,4 +29,11 @@ exclude_patterns = []
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'furo'
+
+# -- Auto-api setup ----------------------------------------------------------
+
 autoapi_dirs = ["../../nest"]
+autoapi_options = [
+    "members", "undoc-members", "private-members",
+    "show-inheritance", "show-module-summary", "special-members",
+]   # default minus 'imported-members'
