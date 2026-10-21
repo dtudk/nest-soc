@@ -198,6 +198,7 @@ class Kinetic:
         Notes
         -----
         * It works as a pseudo-abstract method
+
         """
         return 0
 
@@ -447,6 +448,7 @@ class PorousTransport:
         Notes
         -----
         Accounts for molecular diffusion, Knudsen diffusion, and pressure-driven transport.
+
         """
         if len(gas.species) != 2:
             raise ValueError("Dusty-Gas Model requires a binary mixture")
@@ -544,11 +546,12 @@ class BinaryFick(PorousTransport):
         Notes
         -----
         * Bosanquet formula assumes: (i) binary system, (ii) equimolar counter transport,
-        (iii) constant pressure [1]
+          (iii) constant pressure [1]
 
         References
         ----------
         1. https://doi.org/10.1016/j.jpowsour.2016.01.099
+
         """
         if isinstance(gas.species, Specie):
             return np.array([self.epsilon / self.tau * self.D_knudsen(T, gas.species)])

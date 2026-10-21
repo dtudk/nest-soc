@@ -33,6 +33,7 @@ class Degradation(ABC):
             state variables
         time : float
             time (h) related to degradation
+
         """
         return 0
 
@@ -45,6 +46,7 @@ class Degradation(ABC):
         ----------
         m : float
             material variable (e.g., Ni radius or oxide scale thickness)
+
         """
         return 1
 
@@ -57,6 +59,7 @@ class Degradation(ABC):
         ----------
         m : float
             material variable (e.g., Ni radius or oxide scale thickness)
+
         """
         return 0
 
@@ -83,6 +86,7 @@ class NoDegradation(Degradation):
             state variables
         time : float
             time (h) related to degradation
+
         """
         return 0
 
@@ -95,6 +99,7 @@ class NoDegradation(Degradation):
         ----------
         m : float
             material variable (e.g., Ni radius or oxide scale thickness)
+
         """
         return 1
 
@@ -107,6 +112,7 @@ class NoDegradation(Degradation):
         ----------
         m : float
             material variable (e.g., Ni radius or oxide scale thickness)
+
         """
         return 0
 
@@ -150,13 +156,14 @@ class NickelAgglomeration(Degradation):
     Notes
     -----
     * Contact angle needs to be assumed in the order of 15 degrees or less
-    in order for percolation theory to be valid [2]
+      in order for percolation theory to be valid [2]
     * Impact on electronic conduction resistance is not modeled
 
     References
     ----------
     1. https://doi.org/10.1016/j.pecs.2020.100902
     2. https://doi.org/10.1016/j.jpowsour.2011.06.087
+
     """
 
     def __init__(
@@ -205,6 +212,7 @@ class NickelAgglomeration(Degradation):
         Reference
         ---------
         1. https://doi.org/10.1016/j.jpowsour.2009.02.051
+
         """
         return self.z_bar * psi_i / r_i / (psi_i / r_i + psi_j / r_j)
 
@@ -226,6 +234,7 @@ class NickelAgglomeration(Degradation):
         Reference
         ---------
         1. https://doi.org/10.1016/j.jpowsour.2009.02.051
+
         """
         return (
             0.5
@@ -254,11 +263,12 @@ class NickelAgglomeration(Degradation):
         Notes
         -----
         * There are multiple equations for this parameter,
-        we are using the one proposed by Ref. [1]
+          we are using the one proposed by Ref. [1]
 
         Reference
         ---------
         1. https://doi.org/10.1016/j.powtec.2011.07.011
+
         """
         z_ii = self.z_ii(psi_i, psi_j, r_i, r_j)
         p_i = 0
@@ -287,6 +297,7 @@ class NickelAgglomeration(Degradation):
         ---------
         [1] https://doi.org/10.1016/j.jpowsour.2009.02.051
         [2] https://doi.org/10.1016/S0013-4686(97)00063-7
+
         """
         z_ed_el = self.z_ij(self.psi_ed, self.psi_el, r_ed, self.r0_el)
         r_c = r_ed * np.sin(self.theta)
@@ -308,6 +319,7 @@ class NickelAgglomeration(Degradation):
         References
         ----------
         1. https://doi.org/10.1016/j.jpowsour.2009.02.051
+
         """
         p_ed = self.p_i(self.psi_ed, self.psi_el, r_ed, self.r0_el)
         p_el = self.p_i(self.psi_el, self.psi_ed, self.r0_el, r_ed)
@@ -331,6 +343,7 @@ class NickelAgglomeration(Degradation):
         References
         ----------
         1. https://doi.org/10.1016/j.jpowsour.2009.02.051
+
         """
         return psi_i / r_i**3 / (psi_i / r_i**3 + psi_j / r_j**3)
 
@@ -340,23 +353,31 @@ class NickelAgglomeration(Degradation):
         """
         Ni radius rate of change [μm/h]
 
-        Parameters:
+        Parameters
+        ----------
         m : float
             mean Ni radius [μm]
-        time (float) : time [h]
-        T (float) : temperature [K]
+        state : BoundaryData
+            state variables
+        time : float
+            time [h]
 
-        Returns:
-        float : Ni radius rate of change [μm/h]
+        Returns
+        -------
+        float
+            Ni radius rate of change [μm/h]
 
-        Observation:
+        Notes
+        -----
         * It assumes that that Ps_fuel = [P_H2, P_H2O] in this order
         * It assumes that the contact angle YSZ_YSZ is equal to Ni_YSZ.
         * In theory, both the support layer and the functional layer suffers Ni aglomeration. Here the agglomeration in the functional layer is modeled
         * The model here is based on Ref. [1]
 
-        Reference:
-        [1] https://doi.org/10.1016/j.enconman.2021.113902
+        References
+        ----------
+        1. https://doi.org/10.1016/j.enconman.2021.113902
+
         """
         r = m
         # Partial pressures at TPB
@@ -410,6 +431,7 @@ class NickelAgglomeration(Degradation):
         ----------
         m : float
             Nickel radius in micro meter [μm]
+
         """
         return self.l_tpb_eff(m / 1e6)
 
@@ -432,6 +454,7 @@ class InterconnectOxidation(Degradation):
         activation energy of the oxidation rate [J/mol.K]
     ohm_active : bool, optional
         activates the ohmic degradation modeling in simulation
+
     """
 
     def __init__(self, k_mg, E_ox, ohm_active=True):
