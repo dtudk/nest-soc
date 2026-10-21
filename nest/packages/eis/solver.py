@@ -46,8 +46,12 @@ def solve_steady(
         scaled residual (residual_norm) [A/m^2].
 
     """
-    
-    y0 = model.initial_state() if initial_state is None else np.asarray(initial_state, dtype=float).copy()
+
+    y0 = (
+        model.initial_state()
+        if initial_state is None
+        else np.asarray(initial_state, dtype=float).copy()
+    )
     state_fields = model.unpack_state(y0)
 
     c_ref_f = model.fuel_pressure / (R * model.T)
@@ -62,7 +66,9 @@ def solve_steady(
         F * model.cell.electrode_fuel.transport.epsilon * model.grid.dz_fuel,
         F * model.cell.electrode_air.transport.epsilon * model.grid.dz_air,
         F * model.fuel_channel.width * model.fuel_channel.height / model.width_active,
-        F * model.air_channel.width * model.air_channel.height
+        F
+        * model.air_channel.width
+        * model.air_channel.height
         / (model.cell.area / model.air_channel.length),
         F * model.support_transport.epsilon * model.grid.dz_support,
     )
@@ -73,15 +79,18 @@ def solve_steady(
 
     if initial_max_residual <= tol:
         return OptimizeResult(
-            x=y0, fun=initial_derivatives, success=True,
+            x=y0,
+            fun=initial_derivatives,
+            success=True,
             message="Initial state satisfies the steady equations",
-            nfev=1, residual_norm=initial_max_residual,
+            nfev=1,
+            residual_norm=initial_max_residual,
         )
-
 
     z = (y0 / y_scale).reshape(-1, model.n_x).copy()
     nfev = 0
     for column in range(model.n_x):
+
         def _residual(column_state):
             z[:, column] = column_state
             y = z.ravel() * y_scale
@@ -89,8 +98,12 @@ def solve_steady(
             residuals = (flux_scale * derivatives).reshape(z.shape)
             return residuals[:, column]
 
-        solution = root(_residual, z[:, column].copy(), method="hybr",
-                        options={"xtol": 1e-12, "maxfev": maxiter * (z.shape[0] + 1)})
+        solution = root(
+            _residual,
+            z[:, column].copy(),
+            method="hybr",
+            options={"xtol": 1e-12, "maxfev": maxiter * (z.shape[0] + 1)},
+        )
         nfev += solution.nfev
         max_residual = float(np.max(np.abs(_residual(solution.x))))
         if not np.isfinite(max_residual) or max_residual > tol:
@@ -109,8 +122,6 @@ def solve_steady(
     for key in ("fjac", "r", "qtf"):
         solution.pop(key, None)
     return solution
-
-
 
 
 def solve_transient(
@@ -156,7 +167,11 @@ def solve_transient(
         voltage [V], and capacitor_voltage [V].
 
     """
-    y0 = model.initial_state() if initial_state is None else np.asarray(initial_state, dtype=float).copy()
+    y0 = (
+        model.initial_state()
+        if initial_state is None
+        else np.asarray(initial_state, dtype=float).copy()
+    )
     start, end = t_span
     if circuit is not None:
         y0 = np.r_[y0, protocol.current_before * model.cell.area, 0.0]
@@ -172,6 +187,7 @@ def solve_transient(
         segment_start = segment_edges[i]
         segment_end = segment_edges[i + 1]
         circuit_active = circuit is not None and segment_start >= protocol.change_time
+
         def _time_derivatives(t: float, y: np.ndarray) -> np.ndarray:
             """Calculate state time derivatives using the protocol's voltage or current.
 
@@ -210,8 +226,13 @@ def solve_transient(
             integration_times = np.unique(np.append(output_times, segment_end))
 
         solution = solve_ivp(
-            _time_derivatives, (segment_start, segment_end), y0, 
-            method="BDF", t_eval=integration_times, rtol=rtol, atol=atol,
+            _time_derivatives,
+            (segment_start, segment_end),
+            y0,
+            method="BDF",
+            t_eval=integration_times,
+            rtol=rtol,
+            atol=atol,
         )
 
         if not solution.success:

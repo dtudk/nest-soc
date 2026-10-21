@@ -14,8 +14,18 @@ __all__ = ["Model"]
 class _Grid:
     """Uniform finite-volume grids for the channels, electrodes, and support."""
 
-    def __init__(self, length, fuel_thickness, air_thickness,
-                 n_x, n_zf, n_za, support_thickness, n_zs, air_length):
+    def __init__(
+        self,
+        length,
+        fuel_thickness,
+        air_thickness,
+        n_x,
+        n_zf,
+        n_za,
+        support_thickness,
+        n_zs,
+        air_length,
+    ):
         def _uniform_grid(length, n):
             """Return equally spaced faces, centers, and spacing [m].
 
@@ -35,9 +45,13 @@ class _Grid:
 
         self.x_faces, self.x, self.dx = _uniform_grid(length, n_x)
         self.x_air_faces, self.x_air, self.dx_air = _uniform_grid(air_length, n_x)
-        self.z_fuel_faces, self.z_fuel, self.dz_fuel = _uniform_grid(fuel_thickness, n_zf)
+        self.z_fuel_faces, self.z_fuel, self.dz_fuel = _uniform_grid(
+            fuel_thickness, n_zf
+        )
         self.z_air_faces, self.z_air, self.dz_air = _uniform_grid(air_thickness, n_za)
-        self.z_support_faces, self.z_support, self.dz_support = _uniform_grid(support_thickness, n_zs)
+        self.z_support_faces, self.z_support, self.dz_support = _uniform_grid(
+            support_thickness, n_zs
+        )
 
 
 class Model:
@@ -64,8 +78,15 @@ class Model:
 
     """
 
-    def __init__(self, cell: Cell, boundary: BoundaryData,
-                 n_x: int, n_zf: int, n_za: int, n_zs: int = 6):
+    def __init__(
+        self,
+        cell: Cell,
+        boundary: BoundaryData,
+        n_x: int,
+        n_zf: int,
+        n_za: int,
+        n_zs: int = 6,
+    ):
         self.cell, self.boundary = cell, boundary
         support = cell.fuel_support
         support_thickness = 0.0 if support is None else support.delta
@@ -74,36 +95,59 @@ class Model:
         self.T = float(boundary.T)
 
         if cell.fuel_channel is None or cell.air_channel is None:
-            raise ValueError("EIS model requires cell.fuel_channel and cell.air_channel")
+            raise ValueError(
+                "EIS model requires cell.fuel_channel and cell.air_channel"
+            )
         self.fuel_channel, self.air_channel = cell.fuel_channel, cell.air_channel
 
         fuel, air = cell.electrode_fuel, cell.electrode_air
-        self.grid = _Grid(self.fuel_channel.length, fuel.delta, air.delta,
-                          n_x, n_zf, n_za, support_thickness, self.n_zs,
-                          self.air_channel.length)
-        self.support_transport = fuel.transport if support is None else support.transport
+        self.grid = _Grid(
+            self.fuel_channel.length,
+            fuel.delta,
+            air.delta,
+            n_x,
+            n_zf,
+            n_za,
+            support_thickness,
+            self.n_zs,
+            self.air_channel.length,
+        )
+        self.support_transport = (
+            fuel.transport if support is None else support.transport
+        )
         self.width_active = cell.area / self.fuel_channel.length
         self.fuel_pressure = boundary.fuel_pressure
         self.air_pressure = boundary.air_pressure
 
         self.sigma_f = float(fuel.conductivity.sigma(self.T))
         self.sigma_a = float(air.conductivity.sigma(self.T))
-       
+
         self.resistance = (
-            self.grid.dz_fuel / (2 * self.sigma_f)                  # half of one grid cell in fuel electrode 
-            + sum(layer.delta / layer.conductivity.sigma(self.T)    # sum of all electrolyte layers
-                  for layer in cell.electrolyte)    
-            + self.grid.dz_air / (2 * self.sigma_a)                 # half of one grid cell in air electrode
+            self.grid.dz_fuel
+            / (2 * self.sigma_f)  # half of one grid cell in fuel electrode
+            + sum(
+                layer.delta
+                / layer.conductivity.sigma(self.T)  # sum of all electrolyte layers
+                for layer in cell.electrolyte
+            )
+            + self.grid.dz_air
+            / (2 * self.sigma_a)  # half of one grid cell in air electrode
         )
 
         self.c_in_f, self.u_in_f = self._inlet_conditions(
-            boundary.n_fuel, self.fuel_pressure, self.fuel_channel)
+            boundary.n_fuel, self.fuel_pressure, self.fuel_channel
+        )
         self.c_in_a, self.u_in_a = self._inlet_conditions(
-            boundary.n_air, self.air_pressure, self.air_channel)
+            boundary.n_air, self.air_pressure, self.air_channel
+        )
         self._shapes = (
-            (n_zf, n_x), (n_za, n_x),                   # Electrode potentials
-            (2, n_zf, n_x), (2, n_za, n_x),             # Electrode concentrations
-            (2, n_x), (2, n_x), (2, self.n_zs, n_x),    # Channels and support
+            (n_zf, n_x),
+            (n_za, n_x),  # Electrode potentials
+            (2, n_zf, n_x),
+            (2, n_za, n_x),  # Electrode concentrations
+            (2, n_x),
+            (2, n_x),
+            (2, self.n_zs, n_x),  # Channels and support
         )
         self._indices = np.cumsum([np.prod(shape) for shape in self._shapes])[:-1]
 
@@ -170,8 +214,10 @@ class Model:
             Support gas [mol/m^3], shaped (2, n_zs, n_x).
 
         """
-        return tuple(v.reshape(shape) for v, shape in
-                     zip(np.split(np.asarray(y), self._indices), self._shapes))
+        return tuple(
+            v.reshape(shape)
+            for v, shape in zip(np.split(np.asarray(y), self._indices), self._shapes)
+        )
 
     def initial_state(self) -> np.ndarray:
         """Initialize with inlet gas conditions and zero activation overpotentials.
@@ -187,8 +233,12 @@ class Model:
         c_cf = np.broadcast_to(self.c_in_f[:, None], self._shapes[4])
         c_ca = np.broadcast_to(self.c_in_a[:, None], self._shapes[5])
         c_ps = np.broadcast_to(self.c_in_f[:, None, None], self._shapes[6])
-        psi_f = self.cell.electrode_fuel.kinetic.V_nernst_half(self.T, R * self.T * c_pf)
-        psi_a = -self.cell.electrode_air.kinetic.V_nernst_half(self.T, R * self.T * c_pa)
+        psi_f = self.cell.electrode_fuel.kinetic.V_nernst_half(
+            self.T, R * self.T * c_pf
+        )
+        psi_a = -self.cell.electrode_air.kinetic.V_nernst_half(
+            self.T, R * self.T * c_pa
+        )
         return self.pack_state(psi_f, psi_a, c_pf, c_pa, c_cf, c_ca, c_ps)
 
     def current_density(self, y: np.ndarray, voltage: float) -> np.ndarray:
@@ -226,8 +276,12 @@ class Model:
 
         """
         psi_f, psi_a, c_pf, c_pa, *_ = self.unpack_state(y)
-        eta_f = psi_f - self.cell.electrode_fuel.kinetic.V_nernst_half(self.T, R * self.T * c_pf)
-        eta_a = psi_a + self.cell.electrode_air.kinetic.V_nernst_half(self.T, R * self.T * c_pa)
+        eta_f = psi_f - self.cell.electrode_fuel.kinetic.V_nernst_half(
+            self.T, R * self.T * c_pf
+        )
+        eta_a = psi_a + self.cell.electrode_air.kinetic.V_nernst_half(
+            self.T, R * self.T * c_pa
+        )
         return eta_f, eta_a
 
     def voltage_for_current(self, y: np.ndarray, current_density: float = 0.0) -> float:
@@ -249,8 +303,9 @@ class Model:
         psi_f, psi_a = self.unpack_state(y)[:2]
         return float(np.mean(psi_a[0] - psi_f[-1]) - current_density * self.resistance)
 
-    def _electrode_charge_balance(self, side, potential, concentrations, *,
-                           start_current=0.0, end_current=0.0):
+    def _electrode_charge_balance(
+        self, side, potential, concentrations, *, start_current=0.0, end_current=0.0
+    ):
         """Calculate electrode potential derivatives and reaction sources.
 
         Parameters
@@ -285,13 +340,17 @@ class Model:
 
         overpotential = potential - equilibrium
         reaction_current = electrode.i_F_vol(
-            overpotential, self.T, R * self.T * concentrations)
+            overpotential, self.T, R * self.T * concentrations
+        )
         ionic_current = np.empty((potential.shape[0] + 1, self.n_x))
         ionic_current[0], ionic_current[-1] = start_current, end_current
         ionic_current[1:-1] = conductivity * np.diff(potential, axis=0) / spacing
-        potential_rate = (np.diff(ionic_current, axis=0) / spacing
-                          - reaction_current) / electrode.capacitance_volumetric
-        species_source = np.moveaxis(kinetic.mol_flux(reaction_current[..., None]), -1, 0)
+        potential_rate = (
+            np.diff(ionic_current, axis=0) / spacing - reaction_current
+        ) / electrode.capacitance_volumetric
+        species_source = np.moveaxis(
+            kinetic.mol_flux(reaction_current[..., None]), -1, 0
+        )
         return potential_rate, species_source
 
     def _support_to_fuel_flux(self, c_ps, c_pf):
@@ -324,15 +383,25 @@ class Model:
         matrices = []
         for transport in (support, electrode.transport):
             response = transport.dusty_gas_flux(
-                self.T, gas, np.broadcast_to(face[..., None], basis.shape), basis)
+                self.T, gas, np.broadcast_to(face[..., None], basis.shape), basis
+            )
             matrices.append(-np.moveaxis(response, 0, 1))
-        resistance = (ds * np.linalg.inv(matrices[0])
-                      + df * np.linalg.inv(matrices[1]))
+        resistance = ds * np.linalg.inv(matrices[0]) + df * np.linalg.inv(matrices[1])
         return -np.linalg.solve(resistance, (cf - cs).T[..., None])[..., 0].T
 
-    def _porous_gas_balance(self, concentrations, species_source, gas, transport, spacing, *,
-                        channel_concentrations=None, channel_at_start=True,
-                        start_flux=0.0, end_flux=0.0):
+    def _porous_gas_balance(
+        self,
+        concentrations,
+        species_source,
+        gas,
+        transport,
+        spacing,
+        *,
+        channel_concentrations=None,
+        channel_at_start=True,
+        start_flux=0.0,
+        end_flux=0.0,
+    ):
         """Calculate gas concentration derivatives in an electrode or support.
 
         Parameters
@@ -353,7 +422,7 @@ class Model:
             True places the channel at the first face; False at the last.
         start_flux, end_flux : float or ndarray, optional
             Boundary species fluxes [mol/(m^2 s)].
-            
+
         Returns
         -------
         dc_dt : ndarray
@@ -366,17 +435,24 @@ class Model:
         molar_flux[:, 0], molar_flux[:, -1] = start_flux, end_flux
         if concentrations.shape[1] > 1:
             molar_flux[:, 1:-1] = transport.dusty_gas_flux(
-                self.T, gas,
+                self.T,
+                gas,
                 (concentrations[:, :-1] + concentrations[:, 1:]) / 2,
                 (concentrations[:, 1:] - concentrations[:, :-1]) / spacing,
             )
         if channel_concentrations is not None:
             edge, direction = (0, 1) if channel_at_start else (-1, -1)
             molar_flux[:, edge] = transport.dusty_gas_flux(
-                self.T, gas, (concentrations[:, edge] + channel_concentrations) / 2,
-                direction * (concentrations[:, edge] - channel_concentrations) / (spacing / 2))
-        return (-np.diff(molar_flux, axis=1) / spacing + species_source) / transport.epsilon, molar_flux
-
+                self.T,
+                gas,
+                (concentrations[:, edge] + channel_concentrations) / 2,
+                direction
+                * (concentrations[:, edge] - channel_concentrations)
+                / (spacing / 2),
+            )
+        return (
+            -np.diff(molar_flux, axis=1) / spacing + species_source
+        ) / transport.epsilon, molar_flux
 
     def _channel_gas_balance(self, side, concentrations, electrode_flux):
         """Calculate channel concentration derivatives from flow and gas exchange.
@@ -417,10 +493,13 @@ class Model:
         inlet_molar_flow = inlet_velocity * channel_area * pressure / (R * self.T)
 
         # Molar flow rate [mol/s]
-        molar_flow = np.concatenate((
-            [inlet_molar_flow],
-            inlet_molar_flow - np.cumsum(width_active * spacing * electrode_flux.sum(axis=0)),
-        ))
+        molar_flow = np.concatenate(
+            (
+                [inlet_molar_flow],
+                inlet_molar_flow
+                - np.cumsum(width_active * spacing * electrode_flux.sum(axis=0)),
+            )
+        )
 
         # Gas velocity [m/s]
         velocity = molar_flow * R * self.T / (pressure * channel_area)
@@ -430,13 +509,11 @@ class Model:
         molar_flux[:, 0] = velocity[0] * inlet_concentrations
         molar_flux[:, 1:] = velocity[1:] * concentrations
 
-        # Channel species conservation 
+        # Channel species conservation
         return (
             -np.diff(molar_flux, axis=1) / spacing
             - width_active / channel_area * electrode_flux
         )
-
-
 
     def time_derivatives(self, t: float, y: np.ndarray, voltage: float) -> np.ndarray:
         """Evaluate the coupled electrochemical and gas conservation equations.
@@ -480,7 +557,8 @@ class Model:
             support_to_fuel_flux = self._support_to_fuel_flux(c_ps, c_pf)
 
             dc_ps_dt, flux_s = self._porous_gas_balance(
-                c_ps, 0.0,
+                c_ps,
+                0.0,
                 self.cell.electrode_fuel.kinetic.gas,
                 self.support_transport,
                 self.grid.dz_support,
@@ -489,7 +567,8 @@ class Model:
             )
 
             dc_pf_dt, _ = self._porous_gas_balance(
-                c_pf, fuel_source,
+                c_pf,
+                fuel_source,
                 self.cell.electrode_fuel.kinetic.gas,
                 self.cell.electrode_fuel.transport,
                 self.grid.dz_fuel,
@@ -502,7 +581,8 @@ class Model:
             dc_ps_dt = np.empty_like(c_ps)
 
             dc_pf_dt, flux_f_gas = self._porous_gas_balance(
-                c_pf, fuel_source,
+                c_pf,
+                fuel_source,
                 self.cell.electrode_fuel.kinetic.gas,
                 self.cell.electrode_fuel.transport,
                 self.grid.dz_fuel,
@@ -513,7 +593,8 @@ class Model:
 
         # Air-side porous gas transport.
         dc_pa_dt, flux_a_gas = self._porous_gas_balance(
-            c_pa, -air_source,
+            c_pa,
+            -air_source,
             self.cell.electrode_air.kinetic.gas,
             self.cell.electrode_air.transport,
             self.grid.dz_air,
@@ -524,15 +605,15 @@ class Model:
         air_channel_flux = -flux_a_gas[:, -1]
 
         # Channel gas conservation.
-        dc_cf_dt = self._channel_gas_balance(
-            "fuel", c_cf, fuel_channel_flux
-        )
-        dc_ca_dt = self._channel_gas_balance(
-            "air", c_ca, air_channel_flux
-        )
+        dc_cf_dt = self._channel_gas_balance("fuel", c_cf, fuel_channel_flux)
+        dc_ca_dt = self._channel_gas_balance("air", c_ca, air_channel_flux)
 
         return self.pack_state(
-            dpsi_f_dt, dpsi_a_dt,
-            dc_pf_dt, dc_pa_dt,
-            dc_cf_dt, dc_ca_dt, dc_ps_dt,
+            dpsi_f_dt,
+            dpsi_a_dt,
+            dc_pf_dt,
+            dc_pa_dt,
+            dc_cf_dt,
+            dc_ca_dt,
+            dc_ps_dt,
         )

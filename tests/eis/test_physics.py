@@ -10,7 +10,6 @@ from nest.properties import BasicSpecies, Mixture
 from nest.packages.eis import Model
 
 
-
 def test_equilibrium(model):
     state = model.initial_state()
 
@@ -35,7 +34,9 @@ def test_species_conservation(model):
     model = Model(
         cell,
         model.boundary,
-        model.n_x, model.n_zf, model.n_za,
+        model.n_x,
+        model.n_zf,
+        model.n_za,
         n_zs=2,
     )
 
@@ -48,8 +49,12 @@ def test_species_conservation(model):
     c_pa[0, -1] *= 1.05
 
     # No faradaic sources to test gas transport alone.
-    psi_f[:] = model.cell.electrode_fuel.kinetic.V_nernst_half(model.T, R * model.T * c_pf)
-    psi_a[:] = -model.cell.electrode_air.kinetic.V_nernst_half(model.T, R * model.T * c_pa)
+    psi_f[:] = model.cell.electrode_fuel.kinetic.V_nernst_half(
+        model.T, R * model.T * c_pf
+    )
+    psi_a[:] = -model.cell.electrode_air.kinetic.V_nernst_half(
+        model.T, R * model.T * c_pa
+    )
 
     voltage = model.voltage_for_current(state)
     _, _, dc_pf, dc_pa, dc_cf, dc_ca, dc_ps, *_ = model.unpack_state(
@@ -57,10 +62,28 @@ def test_species_conservation(model):
     )
 
     sides = (
-        (model.cell.electrode_fuel, c_cf, dc_cf, dc_pf, dc_ps,
-         model.c_in_f, model.u_in_f, model.fuel_pressure, model.fuel_channel),
-        (model.cell.electrode_air, c_ca, dc_ca, dc_pa, None,
-         model.c_in_a, model.u_in_a, model.air_pressure, model.air_channel),
+        (
+            model.cell.electrode_fuel,
+            c_cf,
+            dc_cf,
+            dc_pf,
+            dc_ps,
+            model.c_in_f,
+            model.u_in_f,
+            model.fuel_pressure,
+            model.fuel_channel,
+        ),
+        (
+            model.cell.electrode_air,
+            c_ca,
+            dc_ca,
+            dc_pa,
+            None,
+            model.c_in_a,
+            model.u_in_a,
+            model.air_pressure,
+            model.air_channel,
+        ),
     )
 
     dx = model.grid.dx
@@ -105,7 +128,8 @@ def test_stoichiometry(model):
 
     # Fuel electrode: H2 and H2O have opposite production rates.
     expected_h2 = (
-        model.cell.electrode_fuel.capacitance_volumetric * dpsi_f
+        model.cell.electrode_fuel.capacitance_volumetric
+        * dpsi_f
         / (2 * F * model.cell.electrode_fuel.transport.epsilon)
     )
     np.testing.assert_allclose(dc_pf[0], expected_h2)
@@ -113,13 +137,12 @@ def test_stoichiometry(model):
 
     # Air electrode: O2 follows four-electron stoichiometry; N2 is inert.
     expected_o2 = (
-        -model.cell.electrode_air.capacitance_volumetric * dpsi_a
+        -model.cell.electrode_air.capacitance_volumetric
+        * dpsi_a
         / (4 * F * model.cell.electrode_air.transport.epsilon)
     )
     np.testing.assert_allclose(dc_pa[0], expected_o2)
     np.testing.assert_allclose(dc_pa[1], 0, atol=1e-12)
-
-
 
 
 def test_dusty_gas():
@@ -138,25 +161,21 @@ def test_dusty_gas():
     factor = transport.epsilon / transport.tau
 
     d12 = factor * gas.D_ij(0, 1, T, pressure)
-    dk = factor * np.array([
-        transport.D_knudsen(T, sp) for sp in gas.species
-    ])
+    dk = factor * np.array([transport.D_knudsen(T, sp) for sp in gas.species])
 
-    matrix = np.array([
-        [1 / dk[0] + x[1] / d12, -x[0] / d12],
-        [-x[1] / d12, 1 / dk[1] + x[0] / d12],
-    ])
+    matrix = np.array(
+        [
+            [1 / dk[0] + x[1] / d12, -x[0] / d12],
+            [-x[1] / d12, 1 / dk[1] + x[0] / d12],
+        ]
+    )
 
     permeability = factor * transport.dp**2 / 32
     viscosity = gas.viscosity(T, x)
 
-    driving = (
-        -gradient
-        - (permeability / viscosity)
-        * (c / dk) * (R * T * gradient.sum())
+    driving = -gradient - (permeability / viscosity) * (c / dk) * (
+        R * T * gradient.sum()
     )
 
     # Verify that calculated species fluxes satisfy the DGM equations.
-    np.testing.assert_allclose(
-        matrix @ flux, driving, rtol=1e-12, atol=1e-12
-    )
+    np.testing.assert_allclose(matrix @ flux, driving, rtol=1e-12, atol=1e-12)

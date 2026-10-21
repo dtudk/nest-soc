@@ -1,4 +1,4 @@
-"""Protocol definitions for fast transient simulations, 
+"""Protocol definitions for fast transient simulations,
 i.e., voltage ramps and current interruptions."""
 
 from dataclasses import dataclass

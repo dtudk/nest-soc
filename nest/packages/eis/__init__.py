@@ -8,9 +8,14 @@ from .impedance import impedance
 from .postprocess import plot_impedance, plot_transient, save_results
 
 __all__ = [
-    "Model", 
-    "solve_steady", "solve_transient", 
-    "voltage_ramp", "current_interrupt",
+    "Model",
+    "solve_steady",
+    "solve_transient",
+    "voltage_ramp",
+    "current_interrupt",
     "ExternalCircuit",
-    "impedance", "plot_impedance", "plot_transient", "save_results"
+    "impedance",
+    "plot_impedance",
+    "plot_transient",
+    "save_results",
 ]

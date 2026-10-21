@@ -1,4 +1,3 @@
-
 """Steady-state and transient solver tests."""
 
 import numpy as np
@@ -37,12 +36,8 @@ def test_voltage_ramp(model):
     # Verify successful integration and electrolysis current response.
     assert result.success
 
-    initial_current = model.current_density(
-        result.y[:, 0], protocol(times[0])
-    ).mean()
+    initial_current = model.current_density(result.y[:, 0], protocol(times[0])).mean()
 
-    final_current = model.current_density(
-        result.y[:, -1], protocol(times[-1])
-    ).mean()
+    final_current = model.current_density(result.y[:, -1], protocol(times[-1])).mean()
 
     assert final_current < initial_current

@@ -5,12 +5,12 @@ import numpy as np
 from nest.packages.eis import impedance
 
 
-R0 = 1.1e-5   # Ohmic resistance
-RP = 3.0e-5   # Polarization resistance
-TAU = 0.03    # time constant
+R0 = 1.1e-5  # Ohmic resistance
+RP = 3.0e-5  # Polarization resistance
+TAU = 0.03  # time constant
 
 TIME = np.concatenate(([0.0], np.geomspace(1e-9, 30 * TAU, 10000)))
-FREQUENCIES = np.concatenate(([0.0], np.geomspace(0.01, 1e6 , 100)))
+FREQUENCIES = np.concatenate(([0.0], np.geomspace(0.01, 1e6, 100)))
 
 
 def expected_impedance():
@@ -32,13 +32,14 @@ def test_current_interrupt_impedance():
     voltage_before = -(R0 + RP) * current_before
 
     current = np.zeros_like(TIME)
-    voltage = voltage_before - step * (
-        R0 + RP * (1 - np.exp(-TIME / TAU))
-    )
+    voltage = voltage_before - step * (R0 + RP * (1 - np.exp(-TIME / TAU)))
 
     # Verify that current interrupt EIS matches the analytical impedance.
     z = impedance(
-        TIME, voltage, current, FREQUENCIES,
+        TIME,
+        voltage,
+        current,
+        FREQUENCIES,
         voltage_before=voltage_before,
         current_before=current_before,
     )
@@ -51,13 +52,14 @@ def test_voltage_step_impedance():
     effective_tau = TAU * R0 / (R0 + RP)
 
     voltage = np.full_like(TIME, step)
-    current = -step / (R0 + RP) * (
-        1 + RP / R0 * np.exp(-TIME / effective_tau)
-    )
+    current = -step / (R0 + RP) * (1 + RP / R0 * np.exp(-TIME / effective_tau))
 
     # Verify that voltage ramp EIS matches the same analytical impedance.
     z = impedance(
-        TIME, voltage, current, FREQUENCIES,
+        TIME,
+        voltage,
+        current,
+        FREQUENCIES,
         voltage_before=0,
         current_before=0,
     )

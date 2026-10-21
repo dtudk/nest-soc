@@ -51,7 +51,9 @@ def _parameters(name, value):
     if is_dataclass(value):
         items = ((f.name, getattr(value, f.name)) for f in fields(value))
     elif callable(value) and getattr(value, "__closure__", None):
-        items = zip(value.__code__.co_freevars, (c.cell_contents for c in value.__closure__))
+        items = zip(
+            value.__code__.co_freevars, (c.cell_contents for c in value.__closure__)
+        )
     elif isinstance(value, dict):
         items = value.items()
     elif isinstance(value, (list, tuple, np.ndarray)):
@@ -65,8 +67,18 @@ def _parameters(name, value):
         yield from _parameters(f"{name}.{key}", item)
 
 
-def save_results(model, filename, *, steady=None, solution=None, protocol=None,
-                 frequencies=None, Z=None, circuit=None, source_voltage=0.0):
+def save_results(
+    model,
+    filename,
+    *,
+    steady=None,
+    solution=None,
+    protocol=None,
+    frequencies=None,
+    Z=None,
+    circuit=None,
+    source_voltage=0.0,
+):
     """Save simulation data to an Excel workbook.
 
     Parameters
@@ -136,8 +148,11 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
         psi_f, psi_a, c_f, c_a, ch_f, ch_a, support = model.unpack_state(state)
         eta_f, eta_a = model.overpotentials(state)
         current = model.current_density(state, voltage)
-        add(f"{prefix}_terminal", ["time_s", "voltage_V", "mean_current_A_m2"],
-            [t, voltage, current.mean()])
+        add(
+            f"{prefix}_terminal",
+            ["time_s", "voltage_V", "mean_current_A_m2"],
+            [t, voltage, current.mean()],
+        )
         for x, j in zip(model.grid.x, current):
             add(f"{prefix}_current", ["time_s", "x_m", "current_A_m2"], [t, x, j])
 
@@ -155,7 +170,9 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
             header += [f"c_{s}_mol_m3" for s in names] + [f"x_{s}" for s in names]
             fractions = c / c.sum(axis=0)
             for iz, depth in enumerate(depths):
-                for ix, x in enumerate(model.grid.x_air if side == "air" else model.grid.x):
+                for ix, x in enumerate(
+                    model.grid.x_air if side == "air" else model.grid.x
+                ):
                     row = [t, x, depth]
                     if psi is not None and eta is not None:
                         row += [psi[iz, ix], eta[iz, ix]]
@@ -163,9 +180,12 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
                     add(f"{prefix}_{region}", header, row)
 
     for name, value in (
-        ("cell", model.cell), ("boundary", model.boundary),
-        ("protocol", protocol), ("sigma_f_S_m", model.sigma_f),
-        ("sigma_a_S_m", model.sigma_a), ("resistance_ohm_m2", model.resistance),
+        ("cell", model.cell),
+        ("boundary", model.boundary),
+        ("protocol", protocol),
+        ("sigma_f_S_m", model.sigma_f),
+        ("sigma_a_S_m", model.sigma_a),
+        ("resistance_ohm_m2", model.resistance),
     ):
         for entry in _parameters(name, value):
             add("parameters", ["parameter_SI", "value"], entry)
@@ -189,28 +209,48 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
         ("support", model.grid.z_support_faces, model.grid.z_support),
     ):
         for i, center in enumerate(centers):
-            add("grid", ["region", "index", "left_m", "center_m", "right_m"],
-                [region, i, faces[i], center, faces[i + 1]])
+            add(
+                "grid",
+                ["region", "index", "left_m", "center_m", "right_m"],
+                [region, i, faces[i], center, faces[i + 1]],
+            )
 
     if steady is not None:
         state, voltage = steady
         snapshot("steady", None, getattr(state, "x", state), voltage)
     if solution is not None and protocol is not None:
         for index, (t, state) in enumerate(zip(solution.t, solution.y.T)):
-            voltage = (solution.voltage[index] if hasattr(solution, "voltage")
-                       else _voltage(model, state, protocol, t))
+            voltage = (
+                solution.voltage[index]
+                if hasattr(solution, "voltage")
+                else _voltage(model, state, protocol, t)
+            )
             snapshot("transient", t, state, voltage)
             if hasattr(solution, "capacitor_voltage"):
-                add("transient_circuit",
+                add(
+                    "transient_circuit",
                     ["time_s", "current_A", "capacitor_voltage_V"],
-                    [t, solution.current[index], solution.capacitor_voltage[index]])
-            add("command", ["time_s", "control", "value"],
-                [t, protocol.control_mode, protocol(t)])
+                    [t, solution.current[index], solution.capacitor_voltage[index]],
+                )
+            add(
+                "command",
+                ["time_s", "control", "value"],
+                [t, protocol.control_mode, protocol(t)],
+            )
     if Z is not None and frequencies is not None:
         for f, z in zip(frequencies, Z):
-            add("impedance", ["frequency_Hz", "real_ohm_m2", "imag_ohm_m2",
-                              "minus_imag_ohm_m2", "magnitude_ohm_m2", "phase_deg"],
-                [f, z.real, z.imag, -z.imag, abs(z), np.angle(z, deg=True)])
+            add(
+                "impedance",
+                [
+                    "frequency_Hz",
+                    "real_ohm_m2",
+                    "imag_ohm_m2",
+                    "minus_imag_ohm_m2",
+                    "magnitude_ohm_m2",
+                    "phase_deg",
+                ],
+                [f, z.real, z.imag, -z.imag, abs(z), np.angle(z, deg=True)],
+            )
 
     path = Path(filename)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -263,8 +303,9 @@ def plot_impedance(cases, filename, *, experiment=None,
         axes[2].semilogx(f, -z.imag, label=label)
     real = r"$Z_{\mathrm{real}}$ [$\Omega$ m$^2$]"
     imag = r"$-Z_{\mathrm{imag}}$ [$\Omega$ m$^2$]"
-    for ax, xlabel, ylabel in zip(axes, (real, "Frequency [Hz]", "Frequency [Hz]"),
-                                  (imag, real, imag)):
+    for ax, xlabel, ylabel in zip(
+        axes, (real, "Frequency [Hz]", "Frequency [Hz]"), (imag, real, imag)
+    ):
         ax.set(xlabel=xlabel, ylabel=ylabel)
         ax.grid(True, alpha=0.2)
     if imaginary_ylim is not None:
@@ -294,18 +335,32 @@ def _trace(model, state, protocol, t, quantity, side, region, species, location,
             "interface": {"fuel": fields[2][:, -1], "air": fields[3][:, 0]},
             "channel": {"fuel": fields[4], "air": fields[5]},
         }[region][side]
-        values = (concentrations / concentrations.sum(axis=0))[_species(model, side).index(species)]
+        values = (concentrations / concentrations.sum(axis=0))[
+            _species(model, side).index(species)
+        ]
     if location == "mean":
         return values.mean()
     coordinates = model.grid.x_air if side == "air" else model.grid.x
     channel = getattr(model, f"{side}_channel")
-    x = {"inlet": coordinates[0], "center": channel.length / 2,
-         "outlet": coordinates[-1]}[location]
+    x = {
+        "inlet": coordinates[0],
+        "center": channel.length / 2,
+        "outlet": coordinates[-1],
+    }[location]
     return np.interp(x, coordinates, values)
 
 
-def plot_transient(cases, filename, *, quantity="voltage", location="mean",
-                   side="fuel", region="interface", species="H2", log_time=True):
+def plot_transient(
+    cases,
+    filename,
+    *,
+    quantity="voltage",
+    location="mean",
+    side="fuel",
+    region="interface",
+    species="H2",
+    log_time=True,
+):
     """Plot the response to a transient excitation.
 
     Parameters
@@ -335,20 +390,38 @@ def plot_transient(cases, filename, *, quantity="voltage", location="mean",
 
     """
     ylabel = {
-        "voltage": "Voltage [V]", "current": r"Current density [A/m$^2$]",
+        "voltage": "Voltage [V]",
+        "current": r"Current density [A/m$^2$]",
         "overpotential": f"{side.capitalize()} overpotential [V]",
         "species": f"{species} mole fraction [-]",
     }[quantity]
     fig, ax = plt.subplots(figsize=(5.6, 3.6), layout="constrained")
     for label, (model, solution, protocol) in cases.items():
         voltages = getattr(solution, "voltage", [None] * len(solution.t))
-        values = [_trace(model, y, protocol, t, quantity, side, region, species, location, v)
-                  for t, y, v in zip(solution.t, solution.y.T, voltages)]
-        before = values[0] if hasattr(solution, "voltage") else _trace(model, solution.y[:, 0], protocol,
-                        np.nextafter(solution.t[0], -np.inf),
-                        quantity, side, region, species, location)
-        ax.plot(np.r_[solution.t[0], solution.t] + (1e-10 if log_time else 0),
-                [before, *values], label=label)
+        values = [
+            _trace(model, y, protocol, t, quantity, side, region, species, location, v)
+            for t, y, v in zip(solution.t, solution.y.T, voltages)
+        ]
+        before = (
+            values[0]
+            if hasattr(solution, "voltage")
+            else _trace(
+                model,
+                solution.y[:, 0],
+                protocol,
+                np.nextafter(solution.t[0], -np.inf),
+                quantity,
+                side,
+                region,
+                species,
+                location,
+            )
+        )
+        ax.plot(
+            np.r_[solution.t[0], solution.t] + (1e-10 if log_time else 0),
+            [before, *values],
+            label=label,
+        )
     if log_time:
         ax.set_xscale("log")
     ax.set(xlabel="Time [s]", ylabel=ylabel)

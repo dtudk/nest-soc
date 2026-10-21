@@ -5,9 +5,9 @@ import numpy as np
 __all__ = ["impedance"]
 
 
-
-def impedance(time, voltage, current_density, frequencies,
-              voltage_before, current_before):
+def impedance(
+    time, voltage, current_density, frequencies, voltage_before, current_before
+):
     """Calculate impedance from transient voltage and current responses.
 
         Z(f) = -F{dV/dt} / F{dJ/dt}
@@ -84,5 +84,9 @@ def impedance(time, voltage, current_density, frequencies,
         weight = np.exp(-2j * np.pi * f * midpoint) * np.sinc(f * dt)
         v_star = voltage[0] - voltage_before + np.sum(dv * weight)
         j_star = current[0] - current_before + np.sum(dj * weight)
-        result.append(-v_star / j_star if abs(j_star) > 1e-12 * current_scale else complex(np.nan, np.nan))
+        result.append(
+            -v_star / j_star
+            if abs(j_star) > 1e-12 * current_scale
+            else complex(np.nan, np.nan)
+        )
     return np.asarray(result)

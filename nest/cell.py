@@ -34,6 +34,7 @@ class ChannelGeometry:
     width: float
     height: float
 
+
 class Reaction(ABC):
     """
     Reaction model for advection flow.
@@ -192,10 +193,10 @@ class Cell:
         electrode_air: Layer,
         elements: int = 10,
         reactions: tuple[Reaction] = (NoReaction(),),
-        delta_channel = 0.001,
+        delta_channel=0.001,
         fuel_channel: ChannelGeometry | None = None,
         air_channel: ChannelGeometry | None = None,
-        fuel_support = None,
+        fuel_support=None,
     ):
         self.area = area
         self.electrode_fuel = electrode_fuel
@@ -484,8 +485,14 @@ class Cell:
         T_out = boundary.T  # Simplified for now - Isothermic
         P_out = boundary.P  # Simplified for now - Isobaric
         return BoundaryData(
-            V=boundary.V, j=j, n_fuel=n_out_fuel, n_air=n_out_air, T=T_out, P=P_out,
-            fuel_pressure=boundary.fuel_pressure, air_pressure=boundary.air_pressure,
+            V=boundary.V,
+            j=j,
+            n_fuel=n_out_fuel,
+            n_air=n_out_air,
+            T=T_out,
+            P=P_out,
+            fuel_pressure=boundary.fuel_pressure,
+            air_pressure=boundary.air_pressure,
         )
 
     def solve_for_voltage(self, boundary: BoundaryData, **kwargs) -> np.ndarray:
@@ -779,11 +786,8 @@ class Cell:
         return np.concatenate((pol_deg_dt, ohm_deg_dt, power_dt))
 
     def solve_for_time(
-        self,
-        boundary: BoundaryData,
-        mode: str,
-        t_max: int,
-        events=None):
+        self, boundary: BoundaryData, mode: str, t_max: int, events=None
+    ):
         """
         Wrapper to solve the differential equations for degradation.
 

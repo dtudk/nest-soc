@@ -67,7 +67,9 @@ class Kinetic:
         exchange_current_prefactor=None,
     ):
         if gamma is not None and exchange_current_prefactor is not None:
-            raise ValueError("Supply either gamma or exchange_current_prefactor, not both")
+            raise ValueError(
+                "Supply either gamma or exchange_current_prefactor, not both"
+            )
         # Related to reaction balance
         self.gas = gas
         self.nu = np.array(nu)
@@ -157,7 +159,9 @@ class Kinetic:
             potential = self.Vt_nernst_half(T)
             for nu, partial_pressure in zip(self.nu, Ps):
                 if nu != 0:
-                    potential += R * T / (self.n_e * F) * nu * np.log(partial_pressure / P_0)
+                    potential += (
+                        R * T / (self.n_e * F) * nu * np.log(partial_pressure / P_0)
+                    )
             return potential
         if isinstance(self.gas.species, Specie):
             return self.nu[0] * self.gas.species.g(T, Ps[0]) / (self.n_e * F)
@@ -542,9 +546,9 @@ class PorousTransport:
         # Effective molecular and Knudsen diffusivities [m²/s].
         porosity_factor = self.epsilon / self.tau
         D12 = porosity_factor * gas.D_ij(0, 1, T, pressure)
-        DK = porosity_factor * np.array([
-            self.D_knudsen(T, specie) for specie in gas.species
-        ])
+        DK = porosity_factor * np.array(
+            [self.D_knudsen(T, specie) for specie in gas.species]
+        )
 
         # Gas viscosity [Pa s] and porous permeability [m²].
         viscosity = gas.viscosity(T, x)
@@ -557,12 +561,9 @@ class PorousTransport:
         matrix[..., 1, 0] = -x[1] / D12
         matrix[..., 1, 1] = 1 / DK[1] + x[0] / D12
 
-        driving = (
-            -grad_c
-            - permeability / viscosity
-            * c / DK.reshape((2,) + (1,) * (c.ndim - 1))
-            * (R * T * grad_c.sum(axis=0))
-        )
+        driving = -grad_c - permeability / viscosity * c / DK.reshape(
+            (2,) + (1,) * (c.ndim - 1)
+        ) * (R * T * grad_c.sum(axis=0))
 
         rhs = np.moveaxis(driving, 0, -1)[..., None]
         flux = np.linalg.solve(matrix, rhs)[..., 0]
