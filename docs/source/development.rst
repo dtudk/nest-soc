@@ -74,7 +74,7 @@ docstrings via sphinx-autoapi — no manual pages needed. Use Google- or
 NumPy-style docstrings; napoleon renders both.
 
 Pull requests
-------------
+--------------
 
 - CI checks (ruff, ty, deptry, pytest) must pass.
 - The documentation build must be warning-free.
