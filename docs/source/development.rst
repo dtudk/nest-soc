@@ -1,5 +1,5 @@
 Development
-===========
+===============
 
 This page describes how to set up a development environment and which
 checks must pass before changes are merged.
