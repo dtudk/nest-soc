@@ -1,5 +1,5 @@
 """
-Package usage example for generating a iV curve operating with CO-CO2 mixture
+Package usage example for generating a iV curve operating with CO-CO2 mixture.
 """
 
 from time import process_time
@@ -14,7 +14,12 @@ from nest.constants import R
 
 def iv_curve_co2():
     """
-    Example of using the package for generating a iV curve operating with CO-CO2 mixture
+    Example of using the package for generating a iV curve operating with CO-CO2 mixture.
+
+    Returns
+    -------
+    None
+        Return value of ``matplotlib.pyplot.show`` after displaying the figure.
     """
     # Define reactants
     fuel_mix = properties.Mixture(

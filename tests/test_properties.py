@@ -34,7 +34,7 @@ def test_specie_s():
 def test_D_ij():
     """
     Based on experimental data and
-    model error reported by [1]
+    model error reported by [1].
 
     Reference
     ---------

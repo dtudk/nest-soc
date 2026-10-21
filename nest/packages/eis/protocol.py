@@ -42,6 +42,7 @@ def voltage_ramp(
     -------
     _Protocol
         Voltage command and transition time.
+
     """
     return _Protocol(
         lambda t: initial - (final - initial) * expm1(-max(t - start, 0.0) / tau),
@@ -66,6 +67,7 @@ def current_interrupt(
     -------
     _Protocol
         Current command and interruption time.
+
     """
     return _Protocol(
         lambda t: current_before if t < at else 0.0,

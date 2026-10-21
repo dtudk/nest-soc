@@ -44,6 +44,7 @@ def solve_steady(
     solution : OptimizeResult
         Steady-state solution (x), time derivatives (fun), and maximum
         scaled residual (residual_norm) [A/m^2].
+
     """
     
     y0 = model.initial_state() if initial_state is None else np.asarray(initial_state, dtype=float).copy()
@@ -153,6 +154,7 @@ def solve_transient(
         Times [s] in t and cell states in y.
         With a circuit, also includes current [A], current_density [A/m^2],
         voltage [V], and capacitor_voltage [V].
+
     """
     y0 = model.initial_state() if initial_state is None else np.asarray(initial_state, dtype=float).copy()
     start, end = t_span
@@ -171,7 +173,15 @@ def solve_transient(
         segment_end = segment_edges[i + 1]
         circuit_active = circuit is not None and segment_start >= protocol.change_time
         def _time_derivatives(t: float, y: np.ndarray) -> np.ndarray:
-            """Calculate state time derivatives using the protocol's voltage or current."""
+            """Calculate state time derivatives using the protocol's voltage or current.
+
+            Returns
+            -------
+            dy : numpy.ndarray
+                State derivatives [V/s and mol/(m^3 s)]; with a circuit, followed by
+                the current [A/s] and capacitor voltage [V/s] derivatives.
+
+            """
             if circuit is not None:
                 cell_state, current, capacitor_voltage = y[:-2], y[-2], y[-1]
                 voltage = model.voltage_for_current(cell_state, current / model.cell.area)

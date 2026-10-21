@@ -17,7 +17,18 @@ class _Grid:
     def __init__(self, length, fuel_thickness, air_thickness,
                  n_x, n_zf, n_za, support_thickness, n_zs, air_length):
         def _uniform_grid(length, n):
-            """Return equally spaced faces, centers, and spacing [m]."""
+            """Return equally spaced faces, centers, and spacing [m].
+
+            Returns
+            -------
+            faces : numpy.ndarray
+                Face coordinates [m].
+            centers : numpy.ndarray
+                Cell-center coordinates [m].
+            spacing : float
+                Uniform cell width [m]; 0 when n is 0.
+
+            """
             faces = np.linspace(0.0, length, n + 1)
             centers = (faces[:-1] + faces[1:]) / 2
             return faces, centers, length / n if n else 0.0
@@ -50,6 +61,7 @@ class Model:
     Notes
     -----
     Fuel runs from channel to electrolyte; air runs from electrolyte to channel.
+
     """
 
     def __init__(self, cell: Cell, boundary: BoundaryData,
@@ -113,6 +125,7 @@ class Model:
             Species concentrations [mol/m^3] from the ideal-gas law.
         velocity : float
             Gas velocity [m/s] through the channel cross-section.
+
         """
         molar_flows = np.asarray(molar_flows, dtype=float)
         total_flow = molar_flows.sum()
@@ -133,6 +146,7 @@ class Model:
         -------
         y : ndarray
             One-dimensional state vector.
+
         """
         return np.concatenate([np.asarray(v, dtype=float).ravel() for v in fields])
 
@@ -166,6 +180,7 @@ class Model:
         -------
         y : ndarray
             State vector in pack_state order.
+
         """
         c_pf = np.broadcast_to(self.c_in_f[:, None, None], self._shapes[2])
         c_pa = np.broadcast_to(self.c_in_a[:, None, None], self._shapes[3])
@@ -190,6 +205,7 @@ class Model:
         -------
         current : ndarray
             Current density [A/m^2], shaped (n_x,); positive in fuel-cell operation.
+
         """
         psi_f, psi_a = self.unpack_state(y)[:2]
         return (-voltage - psi_f[-1] + psi_a[0]) / self.resistance
@@ -207,6 +223,7 @@ class Model:
         eta_f, eta_a : ndarray
             Fuel and air overpotentials [V], shaped (n_zf, n_x) and (n_za, n_x).
             Electrolyte-adjacent values are eta_f[-1] and eta_a[0].
+
         """
         psi_f, psi_a, c_pf, c_pa, *_ = self.unpack_state(y)
         eta_f = psi_f - self.cell.electrode_fuel.kinetic.V_nernst_half(self.T, R * self.T * c_pf)
@@ -227,6 +244,7 @@ class Model:
         -------
         voltage : float
             Voltage [V].
+
         """
         psi_f, psi_a = self.unpack_state(y)[:2]
         return float(np.mean(psi_a[0] - psi_f[-1]) - current_density * self.resistance)
@@ -252,6 +270,7 @@ class Model:
             dpsi/dt [V/s], from C_vol*dpsi/dt = dj_ion/dz - i_reaction.
         species_source : ndarray
             nu*i_reaction/(n_e*F) [mol/(m^3 s)]. The caller reverses the air sign.
+
         """
         if side == "fuel":
             electrode = self.cell.electrode_fuel
@@ -341,6 +360,7 @@ class Model:
             Concentration derivatives [mol/(m^3 s)], from epsilon*dc/dt = -dN/dz + S.
         molar_flux : ndarray
             Species fluxes at all faces [mol/(m^2 s)], shaped (2, n_z + 1, n_x).
+
         """
         molar_flux = np.zeros((2, concentrations.shape[1] + 1, self.n_x))
         molar_flux[:, 0], molar_flux[:, -1] = start_flux, end_flux
@@ -378,6 +398,7 @@ class Model:
         Notes
         -----
         dc/dt = -d(u*c)/dx - (w_active/A_channel)*N_out.
+
         """
         if side == "fuel":
             inlet_concentrations, inlet_velocity = self.c_in_f, self.u_in_f
@@ -439,6 +460,7 @@ class Model:
         Electrode charge: C_vol*dpsi/dt = dj_ion/dz - i_F.
         Porous gas: epsilon*dc/dt = -dN/dz + S.
         Channel gas: dc/dt = -d(u*c)/dx - (w_active/A_channel)*N.
+
         """
         psi_f, psi_a, c_pf, c_pa, c_cf, c_ca, c_ps = self.unpack_state(y)
 

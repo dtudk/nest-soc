@@ -14,7 +14,14 @@ FREQUENCIES = np.concatenate(([0.0], np.geomspace(0.01, 1e6 , 100)))
 
 
 def expected_impedance():
-    """Analytical impedance of a series resistance and parallel RC."""
+    """
+    Analytical impedance of a series resistance and parallel RC.
+
+    Returns
+    -------
+    impedance: np.Ndarray
+
+    """
     return R0 + RP / (1 + 2j * np.pi * FREQUENCIES * TAU)
 
 

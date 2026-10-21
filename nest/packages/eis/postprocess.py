@@ -1,8 +1,9 @@
 """Plot and save steady-state, transient, and impedance results.
 
-Note
-----
+Notes
+-----
 This code was AI-generated and has not been reviewed.
+
 """
 
 from dataclasses import fields, is_dataclass
@@ -17,7 +18,14 @@ _ROW_LIMIT = 1_048_576
 
 
 def _voltage(model, state, protocol, t):
-    """Get voltage for either voltage or current control."""
+    """Get voltage for either voltage or current control.
+
+    Returns
+    -------
+    voltage : float
+        Cell voltage [V].
+
+    """
     value = protocol(t)
     if protocol.control_mode == "current":
         return model.voltage_for_current(state, value)
@@ -25,7 +33,14 @@ def _voltage(model, state, protocol, t):
 
 
 def _species(model, side):
-    """Get gas names in the model's species order."""
+    """Get gas names in the model's species order.
+
+    Returns
+    -------
+    names : list of str
+        Species names, or ``species_<i>`` for unknown species.
+
+    """
     gas = getattr(model.cell, f"electrode_{side}").kinetic.gas
     known = {v: k for k, v in vars(BasicSpecies).items() if not k.startswith("_")}
     return [known.get(s, f"species_{i}") for i, s in enumerate(gas.species)]
@@ -82,6 +97,7 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
     -----
     Exports all spatial fields and splits worksheets at Excel's row limit.
     Circuit solutions also export capacitor voltage and total current.
+
     """
     if solution is not None and protocol is None:
         raise ValueError("protocol is required when solution is given")
@@ -232,6 +248,7 @@ def plot_impedance(cases, filename, *, experiment=None,
     -------
     Path
         Saved SVG file.
+
     """
     fig, axes = plt.subplots(1, 3, figsize=(11, 3.6), layout="constrained")
     if experiment is not None:
@@ -315,6 +332,7 @@ def plot_transient(cases, filename, *, quantity="voltage", location="mean",
     -------
     Path
         Saved SVG file.
+
     """
     ylabel = {
         "voltage": "Voltage [V]", "current": r"Current density [A/m$^2$]",

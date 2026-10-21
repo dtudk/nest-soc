@@ -1,5 +1,5 @@
 """
-Module providing classes and functions for creating the differential equation problem
+Module providing classes and functions for creating the differential equation problem.
 """
 
 from dataclasses import dataclass
@@ -27,6 +27,7 @@ class ChannelGeometry:
         Channel width [m].
     height : float
         Channel height [m].
+
     """
 
     length: float
@@ -35,7 +36,7 @@ class ChannelGeometry:
 
 class Reaction(ABC):
     """
-    Reaction model for advection flow
+    Reaction model for advection flow.
 
     Parameters
     ----------
@@ -47,6 +48,7 @@ class Reaction(ABC):
         stoichiometric factors for reaction and expected gas mixture [-]
     index : np.ndarray
         array indexes for species to match internal reaction rate equations [-]
+
     """
 
     def __init__(self, k: float, E: float, nu: np.ndarray, index: np.ndarray):
@@ -57,19 +59,25 @@ class Reaction(ABC):
 
     def rate_T(self, T: float):
         """
-        Reaction rate constant for specific temperature [mol/m2]
+        Reaction rate constant for specific temperature [mol/m2].
 
         Parameters
         ----------
         T : float
             temperature [K]
+
+        Returns
+        -------
+        float
+            Reaction rate constant at temperature T [mol/m2]
+
         """
         return self.k * np.exp(-self.E / (R * T))
 
     @abstractmethod
     def rate(self, T: float, Ps: np.ndarray, gases: Mixture | None = None):
         """
-        Kinetic reaction rate [mol/m2]
+        Kinetic reaction rate [mol/m2].
 
         Parameters
         ----------
@@ -79,12 +87,18 @@ class Reaction(ABC):
             partial pressures for each specie [Pa]
         gases: Mixture
             information on gas mixture components
+
+        Returns
+        -------
+        float
+            Kinetic reaction rate [mol/m2]
+
         """
         return 0
 
     def dn(self, T: float, Ps: np.ndarray):
         """
-        Mole flow variation from reaction [mol/s]
+        Mole flow variation from reaction [mol/s].
 
         Parameters
         ----------
@@ -92,13 +106,19 @@ class Reaction(ABC):
             temperature [K]
         Ps: np.ndarray
             partial pressure for each specie [Pa]
+
+        Returns
+        -------
+        numpy.ndarray
+            Mole flow variation for each specie [mol/s]
+
         """
         return self.nu * self.rate(T, Ps)
 
 
 class NoReaction(Reaction):
     """
-    Default class without reaction
+    Default class without reaction.
     """
 
     def __init__(self):
@@ -113,7 +133,7 @@ class NoReaction(Reaction):
 
 class WaterGasShift(Reaction):
     """
-    Water gas shift reaction
+    Water gas shift reaction.
 
     Notes
     -----
@@ -124,6 +144,7 @@ class WaterGasShift(Reaction):
     References
     ----------
     1. https://doi.org/10.1016/j.ijheatmasstransfer.2004.04.010
+
     """
 
     def rate(self, T, Ps, gases=None):
@@ -137,7 +158,7 @@ class WaterGasShift(Reaction):
 
 class Cell:
     """
-    Electrochemical cell model
+    Electrochemical cell model.
 
     Parameters
     ----------
@@ -160,6 +181,7 @@ class Cell:
         delta is the support thickness [m].
         transport defines porosity, tortuosity, and pore diameter [m].
         The support is used for gas transport only.
+
     """
 
     def __init__(
@@ -188,7 +210,7 @@ class Cell:
 
     def V_nernst(self, T: float, Ps_fuel: np.ndarray, Ps_air: np.ndarray) -> float:
         """
-        Thermodynamic voltage (reversible limit) [V]
+        Thermodynamic voltage (reversible limit) [V].
 
         Parameters
         ----------
@@ -198,6 +220,12 @@ class Cell:
             Partial pressure for fuel side [Pa]
         Ps_air : np.ndarray
             Partial pressure for air side [Pa]
+
+        Returns
+        -------
+        float
+            Thermodynamic (Nernst) voltage [V]
+
         """
         return -(
             self.electrode_fuel.kinetic.V_nernst_half(T, Ps_fuel)
@@ -206,7 +234,7 @@ class Cell:
 
     def V_thermoneutral(self, T: float) -> float:
         """
-        Thermodynamic voltage (reversible limit) [V]
+        Thermodynamic voltage (reversible limit) [V].
 
         Parameters
         ----------
@@ -216,6 +244,12 @@ class Cell:
             Partial pressure for fuel side [Pa]
         Ps_air : np.ndarray
             Partial pressure for air side [Pa]
+
+        Returns
+        -------
+        float
+            Thermoneutral voltage [V]
+
         """
         return -(
             self.electrode_fuel.kinetic.V_thermoneutral_half(T)
@@ -224,7 +258,7 @@ class Cell:
 
     def Vt_nernst(self, T: float) -> float:
         """
-        Thermodynamic voltage (reversible limit) [V]
+        Thermodynamic voltage (reversible limit) [V].
 
         Parameters
         ----------
@@ -234,6 +268,12 @@ class Cell:
             Partial pressure for fuel side [Pa]
         Ps_air : np.ndarray
             Partial pressure for air side [Pa]
+
+        Returns
+        -------
+        float
+            Thermodynamic voltage at standard pressure [V]
+
         """
         return -(
             self.electrode_fuel.kinetic.Vt_nernst_half(T)
@@ -244,7 +284,7 @@ class Cell:
         self, j: float, T: float, Ps_fuel: np.ndarray, Ps_air: np.ndarray, **kwargs
     ) -> float:
         """
-        Cell voltage [V]
+        Cell voltage [V].
 
         Parameters
         ----------
@@ -256,6 +296,15 @@ class Cell:
             Partial pressures fuel side [Pa]
         Ps_air : numpy.ndarray
             Partial pressures air side [Pa]
+        **kwargs
+            Degradation material variables (``pol_deg``, ``ohm_deg``), each indexed
+            by layer: fuel electrode, air electrode, then electrolyte layers
+
+        Returns
+        -------
+        float
+            Cell voltage [V]
+
         """
         Ps_fuel_star = self.electrode_fuel.Ps_star(j, T, Ps_fuel)
         Ps_air_star = self.electrode_air.Ps_star(j, T, Ps_air)
@@ -277,16 +326,20 @@ class Cell:
 
     def dn_fuel(self, j: float, boundary: BoundaryData) -> np.ndarray:
         """
-        Net molar flow per element [mol/s] - fuel side
+        Net molar flow per element [mol/s] - fuel side.
 
         Parameters
         ----------
         j : float
             current density [A/m^2]
-        T : float
-            temperature [K]
-        Ps : np.ndarray
-            partial pressures [Pa]
+        boundary : BoundaryData
+            Inlet state variables of the element
+
+        Returns
+        -------
+        numpy.ndarray
+            Net molar flow per element for each fuel-side specie [mol/s]
+
         """
         # Get intermediary composition after electrochemistry
         dn_fuel_int = (
@@ -315,19 +368,25 @@ class Cell:
 
     def dn_air(self, j: float) -> np.ndarray:
         """
-        Net molar flow per element [mol/s] - air side
+        Net molar flow per element [mol/s] - air side.
 
         Parameters
         ----------
         j : float
             current density [A/m^2]
+
+        Returns
+        -------
+        numpy.ndarray
+            Net molar flow per element for each air-side specie [mol/s]
+
         """
         return self.electrode_air.kinetic.mol_flux(j) * self.area / self.elements
 
     def Ps_fuel(self, boundary: BoundaryData, j: float) -> np.ndarray:
         """
         Partial pressure for fuel channel [Pa]
-        assuming the central difference
+        assuming the central difference.
 
         Parameters
         ----------
@@ -335,6 +394,12 @@ class Cell:
             boundary state variables
         j : float
             current density [A/m^2]
+
+        Returns
+        -------
+        numpy.ndarray
+            Partial pressure for fuel channel [Pa]
+
         """
         return (
             boundary.Ps_fuel()
@@ -346,7 +411,7 @@ class Cell:
     def Ps_air(self, boundary: BoundaryData, j: float) -> np.ndarray:
         """
         Partial pressure for air channel [Pa]
-        assuming the central difference
+        assuming the central difference.
 
         Parameters
         ----------
@@ -354,6 +419,12 @@ class Cell:
             boundary state variables
         j : float
             current density [A/m^2]
+
+        Returns
+        -------
+        numpy.ndarray
+            Partial pressure for air channel [Pa]
+
         """
         return (
             boundary.Ps_air()
@@ -364,14 +435,19 @@ class Cell:
 
     def advance_step_area(self, boundary: BoundaryData, **kwargs) -> BoundaryData:
         """
-        Solves current density for element area based on boundary conditions
+        Solves current density for element area based on boundary conditions.
 
         Parameters
         ----------
         boundary : BoundaryData
             Initial value conditions
-        cell : Cell
-            Model for electrochemical cell
+        **kwargs
+            Degradation material variables passed on to `V`
+
+        Returns
+        -------
+        BoundaryData
+            Outlet state variables of the element with the solved current density
 
         Notes
         -----
@@ -380,6 +456,7 @@ class Cell:
           reduce number of area elements
         * JAX autodiff is not compatible, because scipy.optimize.newton is not compatible
         * auto-diff package is not compatible, because it has not been updated to new numpy versions
+
         """
 
         def find_current(x):
@@ -414,14 +491,21 @@ class Cell:
     def solve_for_voltage(self, boundary: BoundaryData, **kwargs) -> np.ndarray:
         """
         Wrapper to solve finite-element description of cell area
-        solving for the voltage value in boundary condition
+        solving for the voltage value in boundary condition.
 
         Parameters
         ----------
         boundary : BoundaryData
             Initial value conditions
-        cell : Cell
-            Model for electrochemical cell
+        **kwargs
+            Degradation material variables (``pol_deg``, ``ohm_deg``), each indexed
+            by element and then by layer
+
+        Returns
+        -------
+        numpy.ndarray
+            Solution matrix (variables x elements): V, j, T, P, fuel and air molar flows, and layer overpotentials
+
         """
         n_layers = 2 + len(self.electrolyte)
         n_variables = 4 + len(boundary.n_fuel) + len(boundary.n_air) + n_layers
@@ -462,7 +546,7 @@ class Cell:
     def solve_for_current(self, boundary: BoundaryData, **kwargs) -> np.ndarray:
         """
         Wrapper to solve finite-element description of cell area
-        solving for the current value in boundary condition
+        solving for the current value in boundary condition.
 
         Parameters
         ----------
@@ -470,6 +554,14 @@ class Cell:
             Initial value conditions
         cell : Cell
             Model for electrochemical cell
+        kwargs:
+            addtional paramters `for find_voltage()` and `solve_for_voltage()`
+
+        Returns
+        -------
+        numpy.ndarray
+            Solution matrix (variables x elements) at the voltage matching the boundary current density
+
         """
 
         def find_voltage(V, **kwargs):
@@ -482,7 +574,13 @@ class Cell:
 
     def count_pol_deg(self) -> int:
         """
-        Returns number of degration models for polarization resistance
+        Returns number of degration models for polarization resistance.
+
+        Returns
+        -------
+        int
+            Number of electrodes with active polarization degradation
+
         """
         counter = 0
         if self.electrode_fuel.degradation.pol_active:
@@ -493,7 +591,13 @@ class Cell:
 
     def count_ohm_deg(self) -> int:
         """
-        Returns number of degradation models for ohmic resistance
+        Returns number of degradation models for ohmic resistance.
+
+        Returns
+        -------
+        int
+            Number of electrolyte layers with active ohmic degradation
+
         """
         counter = 0
         for layer in self.electrolyte:
@@ -505,7 +609,7 @@ class Cell:
         self, y: np.ndarray, boundary: BoundaryData, mode: str
     ) -> np.ndarray:
         """
-        Returns the steady-state solution matrix for boundary conditions
+        Returns the steady-state solution matrix for boundary conditions.
 
         Parameters
         ----------
@@ -515,6 +619,11 @@ class Cell:
             state variable conditions of the cell
         mode : str
             operational mode: "current" or "voltage" constant
+
+        Returns
+        -------
+        numpy.ndarray
+            Steady-state solution matrix (variables x elements)
 
         Notes
         -----
@@ -559,7 +668,7 @@ class Cell:
     ) -> np.ndarray:
         """
         Returns the material change rates from degradation
-        units varies depending on the degradation model
+        units varies depending on the degradation model.
 
         Parameters
         ----------
@@ -571,6 +680,12 @@ class Cell:
             state variables for the cell related to the boundary conditions of the ODE
         mode : str
             operational mode for the degradation simulation (i.e., "current" or "voltage")
+
+        Returns
+        -------
+        numpy.ndarray
+            Concatenated rates of change for pol_deg, ohm_deg and power density [W/m^2]
+
         """
         # 1. Create the placeholders
         n_pol_deg = self.count_pol_deg()
@@ -663,9 +778,14 @@ class Cell:
         # 4. Return it
         return np.concatenate((pol_deg_dt, ohm_deg_dt, power_dt))
 
-    def solve_for_time(self, boundary, mode, t_max, events=None):
+    def solve_for_time(
+        self,
+        boundary: BoundaryData,
+        mode: str,
+        t_max: int,
+        events=None):
         """
-        Wrapper to solve the differential equations for degradation
+        Wrapper to solve the differential equations for degradation.
 
         Parameters
         ----------
@@ -675,6 +795,14 @@ class Cell:
             operational mode for the degradation simulation (i.e., "current" or "voltage")
         t_max : int
             Final time for simulation in hours [h]
+        events: None
+            ???
+
+        Returns
+        -------
+        scipy.integrate.OdeResult
+            Solution object from scipy.integrate.solve_ivp
+
         """
         # Initial value boundary
         n_pol_deg = self.count_pol_deg()

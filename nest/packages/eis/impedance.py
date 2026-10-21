@@ -69,6 +69,7 @@ def impedance(time, voltage, current_density, frequencies,
     state contributes X_0 - X_before. The complete transform is:
 
         F{dX/dt} = (X_0 - X_before) + sum_k I_k(f)
+
     """
 
     time = np.asarray(time, dtype=float)

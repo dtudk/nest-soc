@@ -1,5 +1,5 @@
 """
-Module providing the classes and functions for the material layers in the single repeating unit
+Module providing the classes and functions for the material layers in the single repeating unit.
 """
 
 import numpy as np
@@ -14,7 +14,7 @@ from nest.degradation import NoDegradation
 
 class Kinetic:
     """
-    Kinetic model for eletrochemical reaction
+    Kinetic model for eletrochemical reaction.
 
     Parameters
     ----------
@@ -49,6 +49,7 @@ class Kinetic:
     References
     ----------
     1. https://doi.org/10.1016/j.pecs.2020.100902
+
     """
 
     def __init__(
@@ -83,7 +84,7 @@ class Kinetic:
 
     def j_0(self, T: float, Ps: np.ndarray) -> float:
         """
-        Exchange current density [A/m^2] or current per TPB length [A/m]
+        Exchange current density [A/m^2] or current per TPB length [A/m].
 
         Parameters
         ----------
@@ -91,6 +92,12 @@ class Kinetic:
             Temperature [K]
         Ps : numpy.ndarray
             Partial pressures [Pa]
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Exchange current density [A/m^2] or current per TPB length [A/m]
+
         """
         Ps = np.atleast_1d(np.asarray(Ps, dtype=float))
         p = self.p.reshape((-1,) + (1,) * (Ps.ndim - 1))
@@ -108,19 +115,25 @@ class Kinetic:
 
     def mol_flux(self, j: float) -> np.ndarray:
         """
-        Molar flux [mol/(m^2 s)]
+        Molar flux [mol/(m^2 s)].
 
         Parameters
         ----------
         j : float
             Current density [A/m^2], current per TPB length [A/m], or
             volumetric current [A/m^3].
+
+        Returns
+        -------
+        numpy.ndarray
+            Molar flux of each species [mol/(m^2 s)] (per TPB length or volume when j is)
+
         """
         return self.nu * j / (self.n_e * F)
 
     def V_nernst_half(self, T, Ps):
         """
-        Voltage for electrode side reaction [V]
+        Voltage for electrode side reaction [V].
 
         Parameters
         ----------
@@ -129,10 +142,16 @@ class Kinetic:
         Ps : numpy.ndarray
             Partial pressures
 
+        Returns
+        -------
+        float or numpy.ndarray
+            Half-reaction Nernst voltage [V]
+
         Notes
         -----
         For multidimensional Ps, species occupy the first axis and the
         remaining axes represent spatial locations.
+
         """
         if np.ndim(Ps) > 1:
             potential = self.Vt_nernst_half(T)
@@ -150,7 +169,7 @@ class Kinetic:
 
     def V_thermoneutral_half(self, T):
         """
-        Voltage for electrode side reaction [V]
+        Voltage for electrode side reaction [V].
 
         Parameters
         ----------
@@ -158,6 +177,12 @@ class Kinetic:
             Temperature [K]
         Ps : numpy.ndarray
             Partial pressures
+
+        Returns
+        -------
+        float
+            Half-reaction thermoneutral voltage [V]
+
         """
         if isinstance(self.gas.species, Specie):
             return self.nu[0] * self.gas.species.h(T) / (self.n_e * F)
@@ -168,12 +193,18 @@ class Kinetic:
 
     def Vt_nernst_half(self, T):
         """
-        Voltage for electrode side reaction at reference pressure [V]
+        Voltage for electrode side reaction at reference pressure [V].
 
         Parameters
         ----------
         T : float
             Temperature [K]
+
+        Returns
+        -------
+        float
+            Half-reaction voltage at reference pressure [V]
+
         """
         if isinstance(self.gas.species, Specie):
             return self.nu[0] * self.gas.species.gT(T) / (self.n_e * F)
@@ -184,7 +215,7 @@ class Kinetic:
 
     def V(self, j: float, T: float, j0: float) -> float:
         """
-        Voltage [V]
+        Voltage [V].
 
         Parameters
         ----------
@@ -194,6 +225,11 @@ class Kinetic:
             Temperature [K]
         j0 : float
             Exchange current density [A/m^2] or current per TPB length [A/m]
+
+        Returns
+        -------
+        float
+            Activation overpotential [V] (always 0 for the base model)
 
         Notes
         -----
@@ -205,7 +241,7 @@ class Kinetic:
 
 class ButlerVolmer(Kinetic):
     """
-    Butler-Volmer half-reaction kinetics
+    Butler-Volmer half-reaction kinetics.
 
     Parameters
     ----------
@@ -229,13 +265,14 @@ class ButlerVolmer(Kinetic):
         activation energy for Arrhenius equation [J/mol.K]
     exchange_current_prefactor : float, optional
         TPB-based pre-exponential kinetic factor [A/(m K^theta)].
+
     """
 
     def j(
         self, V: float | np.ndarray, T: float | np.ndarray, j0: float | np.ndarray
     ) -> float | np.ndarray:
         """
-        Current density [A/m^2] or current per TPB length [A/m]
+        Current density [A/m^2] or current per TPB length [A/m].
 
         Parameters
         ----------
@@ -245,6 +282,12 @@ class ButlerVolmer(Kinetic):
             Temperature [K]
         j0 : float
             Exchange current density [A/m^2] or current per TPB length [A/m]
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Current density [A/m^2] or current per TPB length [A/m]
+
         """
         V, T, j0 = np.asarray(V), np.asarray(T), np.asarray(j0)
         return j0 * (
@@ -256,13 +299,22 @@ class ButlerVolmer(Kinetic):
         self, V: float | np.ndarray, T: float | np.ndarray, j0: float | np.ndarray
     ) -> float | np.ndarray:
         """
-        First derivative of current density by voltage [A/m^2.V] or [A/m.V]
+        First derivative of current density by voltage [A/m^2.V] or [A/m.V].
 
         Parameters
         ----------
-        V (float) : Activation overpotential [V]
-        T (float) : Temperature [K]
-        j0 (float) : Exchange current density [A/m^2] or current per TPB length [A/m]
+        V : float
+            Activation overpotential [V]
+        T : float
+            Temperature [K]
+        j0 : float
+            Exchange current density [A/m^2] or current per TPB length [A/m]
+
+        Returns
+        -------
+        float or numpy.ndarray
+            First derivative of current density by voltage [A/m^2.V] or [A/m.V]
+
         """
         V, T, j0 = np.asarray(V), np.asarray(T), np.asarray(j0)
         return j0 * (
@@ -282,7 +334,7 @@ class ButlerVolmer(Kinetic):
         self, V: float | np.ndarray, T: float | np.ndarray, j0: float | np.ndarray
     ) -> float | np.ndarray:
         """
-        Second derivative of current density by voltage [A/m^2.V^2] or [A/m.V^2]
+        Second derivative of current density by voltage [A/m^2.V^2] or [A/m.V^2].
 
         Parameters
         ----------
@@ -292,6 +344,12 @@ class ButlerVolmer(Kinetic):
             Temperature [K]
         j0 : float
             Exchange current density [A/m^2] or current per TPB length [A/m]
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Second derivative of current density by voltage [A/m^2.V^2] or [A/m.V^2]
+
         """
         V, T, j0 = np.asarray(V), np.asarray(T), np.asarray(j0)
         return j0 * (
@@ -303,7 +361,7 @@ class ButlerVolmer(Kinetic):
 
     def V(self, j: float, T: float, j0: float) -> float:
         """
-        Activation overpotential [V]
+        Activation overpotential [V].
 
         Parameters
         ----------
@@ -313,6 +371,11 @@ class ButlerVolmer(Kinetic):
             Temperature [K]
         j0 : float
             Exchange current density [A/m^2] or current per TPB length [A/m]
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Activation overpotential [V]
 
         Notes
         -----
@@ -325,6 +388,7 @@ class ButlerVolmer(Kinetic):
         References
         ----------
         1. https://doi.org/10.1016/j.pecs.2020.100902
+
         """
         if any(np.ndim(value) > 0 for value in (j, T, j0)):
             return np.vectorize(self.V, otypes=[float])(j, T, j0)
@@ -352,7 +416,7 @@ class ButlerVolmer(Kinetic):
 
 class Conductivity:
     """
-    Generic conductivity model
+    Generic conductivity model.
 
     Parameters
     ----------
@@ -366,6 +430,7 @@ class Conductivity:
     Notes
     -----
     * Default : no resistance
+
     """
 
     def __init__(self, sigma0=np.inf, E_act=0.0, theta=-1):
@@ -375,19 +440,25 @@ class Conductivity:
 
     def sigma(self, T: float) -> float:
         """
-        Material conductivity at given temperature (T) [S/m]
+        Material conductivity at given temperature (T) [S/m].
 
         Parameters
         ----------
         T : float
             Temperature [K]
+
+        Returns
+        -------
+        float
+            Material conductivity [S/m]
+
         """
         return self.sigma0 * T**self.theta * np.exp(-self.E_act / (R * T))
 
 
 class PorousTransport:
     """
-    Generic diffusion over porous media
+    Generic diffusion over porous media.
 
     Parameters
     ----------
@@ -397,6 +468,7 @@ class PorousTransport:
         porosity
     tau : float
         tortuosity
+
     """
 
     def __init__(self, dp=0.0, epsilon=0.0, tau=0.0):
@@ -406,7 +478,7 @@ class PorousTransport:
 
     def D_knudsen(self, T: float, specie: Specie) -> float:
         """
-        Knudsen diffusion coefficient [m^2/s]
+        Knudsen diffusion coefficient [m^2/s].
 
         Parameters
         ----------
@@ -415,8 +487,15 @@ class PorousTransport:
         specie : Specie
             Thermodynamic specie model
 
+        Returns
+        -------
+        float
+            Knudsen diffusion coefficient [m^2/s]
+
         References
+        ----------
         1. https://doi.org/10.1016/j.pecs.2020.100902
+
         """
         return self.dp / 3 * (8 * R * T / (pi * specie.M / 1000)) ** (0.5)
 
@@ -494,7 +573,7 @@ class PorousTransport:
         self, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture, delta: float
     ) -> np.ndarray:
         """
-        Pressure drop along layer thickness [Pa/m]
+        Pressure drop along layer thickness [Pa/m].
 
         Parameters
         ----------
@@ -509,16 +588,22 @@ class PorousTransport:
         delta : float
             Thickness of the porous layer [m]
 
+        Returns
+        -------
+        numpy.ndarray
+            Input pressure P, unchanged [Pa] (no transport losses in the base model)
+
         Notes
         -----
         * Works as a pseudo-abstract method
+
         """
         return P
 
 
 class BinaryFick(PorousTransport):
     """
-    Fick diffusion model for binary mixture
+    Fick diffusion model for binary mixture.
 
     Parameters
     ----------
@@ -528,11 +613,12 @@ class BinaryFick(PorousTransport):
         porosity
     tau : float
         tortuosity
+
     """
 
     def D_eff(self, T: float, P: float, gas: Mixture) -> np.ndarray:
         """
-        Effective binary diffusivity [m^2/s]
+        Effective binary diffusivity [m^2/s].
 
         Parameters
         ----------
@@ -542,6 +628,11 @@ class BinaryFick(PorousTransport):
             Pressure [Pa]
         gas : Mixture
             Misture of species
+
+        Returns
+        -------
+        numpy.ndarray
+            Effective diffusivity of each species [m^2/s]
 
         Notes
         -----
@@ -581,7 +672,7 @@ class BinaryFick(PorousTransport):
         self, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture, delta: float
     ) -> np.ndarray:
         """
-        Partial pressures at the reaction site [Pa]
+        Partial pressures at the reaction site [Pa].
 
         Parameters
         ----------
@@ -593,18 +684,26 @@ class BinaryFick(PorousTransport):
             Pressure [Pa]
         gas : Mixture
             Mixture of species
+        delta: float
+            ???
+
+        Returns
+        -------
+        numpy.ndarray
+            Partial pressures at the reaction site [Pa]
 
         Notes
         -----
         * This function assumes: (i) no transiency (ii) binary mixture (iii) ideal gas law
         * Function also assumes -mol_flus as boundary condition for molar flux at x = x_max
+
         """
         return P + mol_flux / self.D_eff(T, sum(P), gas) * R * T * delta
 
 
 class StefanMaxwell(PorousTransport):
     """
-    Stefan-Maxwell gas model for multi-component mixture
+    Stefan-Maxwell gas model for multi-component mixture.
 
     Parameters
     ----------
@@ -614,11 +713,12 @@ class StefanMaxwell(PorousTransport):
         porosity
     tau : float
         tortuosity
+
     """
 
     def D_eff(self, T: float, P: float, gas: Mixture) -> np.ndarray:
         """
-        Effective binary diffusivity [m^2/s^2]
+        Effective binary diffusivity [m^2/s^2].
 
         Parameters
         ----------
@@ -629,6 +729,11 @@ class StefanMaxwell(PorousTransport):
         gas : Mixture
             Misture of species
 
+        Returns
+        -------
+        numpy.ndarray
+            Effective diffusivities [m^2/s], shape (1,) for a pure gas or (n, n) pairwise matrix
+
         Notes
         -----
         * Equilvalent binary diffusivities are calculated based on the extended Stefan Maxwell model proposed by [1]
@@ -636,6 +741,7 @@ class StefanMaxwell(PorousTransport):
         References
         ----------
         1. https://doi.org/10.1016/j.jpowsour.2016.01.099
+
         """
         if isinstance(gas.species, Specie):
             return np.array([self.epsilon / self.tau * self.D_knudsen(T, gas.species)])
@@ -673,7 +779,7 @@ class StefanMaxwell(PorousTransport):
         self, x: np.ndarray, mol_flux: np.ndarray, D: np.ndarray, T: float, gas: Mixture
     ) -> np.ndarray:
         """
-        Molar concentration gradient along layer thickness [mol/m^4]
+        Molar concentration gradient along layer thickness [mol/m^4].
 
         Parameters
         ----------
@@ -681,15 +787,23 @@ class StefanMaxwell(PorousTransport):
             Molar concentrations along layer thickness [Pa]
         mol_flux : float
             molar flux [mol/m^2.s]
+        D : numpy.ndarray
+            ???
         T : float
             Temperature [K]
         gas : Mixture
             Mixture of species
 
+        Returns
+        -------
+        numpy.ndarray
+            Molar concentration gradient of each species [mol/m^4]
+
         Notes
         -----
         * This function assumes: (i) no transiency (ii) multi-component mixture (iii) ideal gas law
         * Note that the molar flux in the diffusion equations is equal to -mol_flux
+
         """
         P_gas = np.sum(x) * R * T
 
@@ -710,7 +824,7 @@ class StefanMaxwell(PorousTransport):
         self, mol_flux: np.ndarray, T: float, P: np.ndarray, gas: Mixture, delta: float
     ) -> np.ndarray:
         """
-        Partial pressures at the reaction site [Pa]
+        Partial pressures at the reaction site [Pa].
 
         Parameters
         ----------
@@ -722,11 +836,19 @@ class StefanMaxwell(PorousTransport):
             Partial pressures [Pa]
         gas : Mixture
             Mixture of species
+        delta : float
+            ???
+
+        Returns
+        -------
+        numpy.ndarray
+            Partial pressures at the reaction site [Pa]
 
         Notes
         -----
         * This function assumes: (i) no transiency (ii) binary mixture (iii) ideal gas law
         * Stefan-Maxwell model for diffusion
+
         """
         D = self.D_eff(T, sum(P), gas)
 
@@ -739,7 +861,7 @@ class StefanMaxwell(PorousTransport):
 
 class Layer:
     """
-    Cell layer (i.e., support, electrode, electrolyte)
+    Cell layer (i.e., support, electrode, electrolyte).
 
     Parameters
     ----------
@@ -762,6 +884,7 @@ class Layer:
         for volumetric Faradaic current with TPB-based kinetics.
     capacitance_volumetric : float, optional
         Volumetric double-layer capacitance [F/m^3].
+
     """
 
     def __init__(
@@ -796,6 +919,12 @@ class Layer:
             Temperature [K].
         Ps : numpy.ndarray
             Partial pressures [Pa], with species on the first axis.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Volumetric Faradaic current [A/m^3]
+
         """
         if getattr(self.kinetic, "exchange_current_prefactor", None) is None:
             raise ValueError("i_F_vol requires TPB-based kinetics")
@@ -807,7 +936,7 @@ class Layer:
 
     def V_ohm(self, j: float, T: float, **kwargs) -> float:
         """
-        Ohmic voltage [V]
+        Ohmic voltage [V].
 
         Parameters
         ----------
@@ -817,6 +946,16 @@ class Layer:
             temperature [K]
         delta_extra : float, optional
             increase of layer thickness for ohmic resistance [m]
+        kwargs:
+            ohm_deg : float
+                material variable for ohmic degradation ratio
+                see :class: `~nest.degradation.Degradation` `ohm_deg()`
+
+        Returns
+        -------
+        float
+            Ohmic voltage [V]
+
         """
         delta = self.delta
         if self.degradation.ohm_active:
@@ -825,7 +964,7 @@ class Layer:
 
     def V_act(self, j: float, T: float, Ps=np.array([0]), **kwargs) -> float:
         """
-        Activation voltage [V]
+        Activation voltage [V].
 
         Parameters
         ----------
@@ -837,6 +976,16 @@ class Layer:
             partial pressures [Pa]
         pol_ratio : float, optional
             ratio of active reaction area compared to begining of life [m]
+        kwargs:
+            pol_deg : float
+                material variable for polarization degradation ratio
+                see :class: `~nest.degradation.Degradation` `pol_deg()`
+
+        Returns
+        -------
+        float
+            Activation voltage [V]
+
         """
         if getattr(self.kinetic, "exchange_current_prefactor", None) is not None:
             raise ValueError("V_act requires area-based kinetics")
@@ -847,7 +996,7 @@ class Layer:
 
     def Ps_star(self, j, T, Ps):
         """
-        Partial pressures at the reaction site [Pa]
+        Partial pressures at the reaction site [Pa].
 
         Parameters
         ----------
@@ -857,6 +1006,12 @@ class Layer:
             temperature [K]
         Ps : numpy.ndarray
             partial pressure [Pa]
+
+        Returns
+        -------
+        numpy.ndarray
+            Partial pressures at the reaction site [Pa]
+
         """
         return self.transport.dP_dl(
             self.kinetic.mol_flux(j), T, Ps, self.kinetic.gas, self.delta
@@ -864,7 +1019,7 @@ class Layer:
 
     def V(self, j: float, T: float, Ps=np.array([0]), **kwargs) -> float:
         """
-        Total layer voltage [V]
+        Total layer voltage [V].
 
         Parameters
         ----------
@@ -874,5 +1029,13 @@ class Layer:
             Temperature [K]
         Ps : numpy.ndarray
             partial pressures [Pa]
+        kwargs:
+            additional arguments see `V_ohm`and `V_act` for more
+
+        Returns
+        -------
+        float
+            Total layer voltage (ohmic + activation) [V]
+
         """
         return self.V_ohm(j, T, **kwargs) + self.V_act(j, T, Ps, **kwargs)

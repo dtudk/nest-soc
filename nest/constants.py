@@ -1,5 +1,5 @@
 """
-Numerical and thermodynamic constants
+Numerical and thermodynamic constants.
 """
 
 R = 8.314462618  # J/mol.K - Source: https://physics.nist.gov/cuu/Constants/

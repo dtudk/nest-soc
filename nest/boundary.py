@@ -1,5 +1,5 @@
 """
-Provide data object for solving problems and transfering information for degradation
+Provide data object for solving problems and transfering information for degradation.
 """
 
 import numpy as np
@@ -7,7 +7,7 @@ import numpy as np
 
 class BoundaryData:
     """
-    Boundary data for solving initial value ODE
+    Boundary data for solving initial value ODE.
 
     Parameters
     ----------
@@ -27,6 +27,7 @@ class BoundaryData:
         Fuel-side pressure [Pa]; defaults to P at initialization.
     air_pressure : float, optional
         Air-side pressure [Pa]; defaults to P at initialization.
+
     """
 
     def __init__(
@@ -53,12 +54,22 @@ class BoundaryData:
 
     def Ps_fuel(self) -> np.ndarray:
         """
-        Partial pressure for fuel side [Pa]
+        Partial pressure for fuel side [Pa].
+
+        Returns
+        -------
+        numpy.ndarray
+            Partial pressure of each fuel-side species [Pa]
         """
         return np.array([n / sum(self.n_fuel) * self.P for n in self.n_fuel])
 
     def Ps_air(self) -> np.ndarray:
         """
-        Partial pressure for air side [Pa]
+        Partial pressure for air side [Pa].
+
+        Returns
+        -------
+        numpy.ndarray
+            Partial pressure of each air-side species [Pa]
         """
         return np.array([n / sum(self.n_air) * self.P for n in self.n_air])

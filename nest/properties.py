@@ -1,5 +1,5 @@
 """
-Thermodynamic and transport properties for ideal gases
+Thermodynamic and transport properties for ideal gases.
 """
 
 import numpy as np
@@ -9,7 +9,7 @@ from .constants import R, P_0
 
 class Specie:
     """
-    Ideal gas specie properties
+    Ideal gas specie properties.
 
     Parameters
     ----------
@@ -29,6 +29,7 @@ class Specie:
     References
     ----------
     1. https://ntrs.nasa.gov/citations/20020085330
+
     """
 
     def __init__(self, cs: tuple[np.ndarray, np.ndarray], M: float, V: float):
@@ -58,6 +59,7 @@ class Specie:
         O2, and N2. Pressure dependence is omitted; P [Pa] only broadcasts
         the output shape. Values outside the fit range are extrapolations.
         Species without viscosity coefficients are not supported.
+
         """
         # CoolProp 8.0.0 viscosity fits at 101325 Pa, 500-1500 K [Pa s].
         coefficients = {BasicSpecies.H2: (2.0457311737779576e-05,
@@ -140,12 +142,18 @@ class Specie:
 
     def a(self, T: float) -> np.ndarray:
         """
-        NASA coefficients for given temperature (T)
+        NASA coefficients for given temperature (T).
 
         Parameters
         ----------
         T : float
             Temperature [K]
+
+        Returns
+        -------
+        numpy.ndarray
+            NASA coefficients and temperature limits for the range containing T
+
         """
         for c in self.cs:
             if c[9] <= T <= c[10]:
@@ -154,12 +162,18 @@ class Specie:
 
     def cp(self, T: float) -> float:
         """
-        Molar specific heat at constant pressure [J/mol.K]
+        Molar specific heat at constant pressure [J/mol.K].
 
         Parameters
         ----------
         T : float
             Temperature [K]
+
+        Returns
+        -------
+        float
+            Molar specific heat at constant pressure [J/mol.K]
+
         """
         a = self.a(T)
         return R * (
@@ -174,12 +188,18 @@ class Specie:
 
     def h(self, T: float) -> float:
         """
-        Molar specific enthalpy [J/mol]
+        Molar specific enthalpy [J/mol].
 
         Parameters
         ----------
         T : float
             Temperature [K]
+
+        Returns
+        -------
+        float
+            Molar specific enthalpy [J/mol]
+
         """
         a = self.a(T)
         return R * (
@@ -195,14 +215,20 @@ class Specie:
 
     def s(self, T: float, P: float) -> float:
         """
-        Molar specific entropy [J/mol.K]
+        Molar specific entropy [J/mol.K].
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         T : float
             Temperature [K]
         P : float
             Absolute pressure [Pa]
+
+        Returns
+        -------
+        float
+            Molar specific entropy [J/mol.K]; 0 if P is 0
+
         """
         if P == 0:
             return 0
@@ -221,7 +247,7 @@ class Specie:
 
     def g(self, T: float, P: float) -> float:
         """
-        Molar specific gibbs free energy [J/mol.K]
+        Molar specific gibbs free energy [J/mol.K].
 
         Parameters
         ----------
@@ -229,6 +255,12 @@ class Specie:
             Temperature [K]
         P : float
             Absolute pressure [Pa]
+
+        Returns
+        -------
+        float
+            Molar specific gibbs free energy [J/mol]; 0 if P is 0
+
         """
         if P == 0:
             return 0
@@ -237,7 +269,7 @@ class Specie:
 
     def gT(self, T: float) -> float:
         """
-        Molar specific gibbs free energy at reference pressure [J/mol.K]
+        Molar specific gibbs free energy at reference pressure [J/mol.K].
 
         Parameters
         ----------
@@ -245,13 +277,19 @@ class Specie:
             Temperature [K]
         P : float
             Absolute pressure [Pa]
+
+        Returns
+        -------
+        float
+            Molar specific gibbs free energy at reference pressure [J/mol]
+
         """
         return self.h(T) - T * self.s(T, P_0)
 
 
 class Mixture:
     """
-    Ideal gas mixture properties
+    Ideal gas mixture properties.
 
     Parameters
     ----------
@@ -265,6 +303,7 @@ class Mixture:
     References
     ----------
     1. https://doi.org/10.1021/j100845a020
+
     """
 
     def __init__(self, species: Specie | tuple[Specie, ...]):
@@ -300,6 +339,7 @@ class Mixture:
         -------
         viscosity : float or numpy.ndarray
             Mixture viscosity [Pa s], with the species axis removed.
+
         """
         x = np.asarray(xs, dtype=float)
         viscosities = [specie.viscosity(T) for specie in self.species]
@@ -325,7 +365,7 @@ class Mixture:
         self, i: int, j: int, T: float | np.ndarray, P: float | np.ndarray
     ) -> float | np.ndarray:
         """
-        Binary diffusivities [m^2/s]
+        Binary diffusivities [m^2/s].
 
         Parameters
         ----------
@@ -337,6 +377,12 @@ class Mixture:
             Temperature [K]
         P : float
             Absolute pressure [Pa]
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Binary diffusivity of species i and j [m^2/s]
+
         """
         return (
             1.01325e-2
@@ -350,7 +396,7 @@ class Mixture:
 
     def cp(self, T: float, xs: np.ndarray) -> float:
         """
-        Molar specific heat at constant pressure [J/mol.K]
+        Molar specific heat at constant pressure [J/mol.K].
 
         Parameters
         ----------
@@ -358,6 +404,12 @@ class Mixture:
             Temperature [K]
         xs : numpy.ndarray
             Molar fractions
+
+        Returns
+        -------
+        float
+            Mixture molar specific heat at constant pressure [J/mol.K]
+
         """
         return sum(
             np.array([xs[i] * specie.cp(T) for i, specie in enumerate(self.species)])
@@ -365,7 +417,7 @@ class Mixture:
 
     def h(self, T: float, xs: np.ndarray) -> float:
         """
-        Molar specific enthalpy [J/mol]
+        Molar specific enthalpy [J/mol].
 
         Parameters
         ----------
@@ -373,6 +425,12 @@ class Mixture:
             Temperature [K]
         xs : numpy.ndarray
             Molar fractions
+
+        Returns
+        -------
+        float
+            Mixture molar specific enthalpy [J/mol]
+
         """
         return sum(
             np.array([xs[i] * specie.h(T) for i, specie in enumerate(self.species)])
@@ -380,7 +438,7 @@ class Mixture:
 
     def s(self, T: float, P: float, xs: np.ndarray) -> float:
         """
-        Molar specific entropy [J/mol.K]
+        Molar specific entropy [J/mol.K].
 
         Parameters
         ----------
@@ -390,6 +448,11 @@ class Mixture:
             Absolute pressure [Pa]
         xs : numpy.ndarray
             Molar fractions
+
+        Returns
+        -------
+        float
+
         """
         return sum(
             np.array(
@@ -402,7 +465,7 @@ class Mixture:
 
     def g(self, T: float, P: float, xs: np.ndarray) -> float:
         """
-        Molar specific free gibbs energy [J/mol.K]
+        Molar specific free gibbs energy [J/mol.K].
 
         Parameters
         ----------
@@ -412,6 +475,11 @@ class Mixture:
             Absolute pressure [Pa]
         xs : numpy.ndarray
             Molar fractions [-]
+
+        Returns
+        -------
+        float
+
         """
         return sum(
             np.array(
@@ -425,7 +493,7 @@ class Mixture:
 
 class BasicSpecies:
     """
-    Gas species for SOC modelling (i.e., H2, H2O, O2, N2, CO, CO2, CH4)
+    Gas species for SOC modelling (i.e., H2, H2O, O2, N2, CO, CO2, CH4).
 
     Notes
     -----
@@ -434,6 +502,7 @@ class BasicSpecies:
     References
     ----------
     1. https://ntrs.nasa.gov/citations/20020085330
+
     """
 
     H2 = Specie(

@@ -1,5 +1,5 @@
 """
-Determines which files are included when importing the whole package
+Determines which files are included when importing the whole package.
 """
 
 import sys

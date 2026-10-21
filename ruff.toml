@@ -1,3 +1,9 @@
+# ruff.toml
 [lint]
-select = ["E", "F"]
-ignore = ["E501"]
+preview = true
+explicit-preview-rules = true          # only opt in to the preview rules named below
+select = ["E", "F", "D4", "D417", "DOC201"]
+ignore = ["E501", "D400", "D401"]
+
+[lint.pydocstyle]
+convention = "numpy"

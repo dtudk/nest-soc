@@ -8,7 +8,7 @@ from nest.boundary import BoundaryData
 
 class Degradation(ABC):
     """
-    Abstract class for degradation modeling
+    Abstract class for degradation modeling.
     """
 
     def __init__(self):
@@ -23,7 +23,7 @@ class Degradation(ABC):
     @abstractmethod
     def material_dt(self, m, state, time, **kwargs):
         """
-        Default material degradation ODE
+        Default material degradation ODE.
 
         Parameters
         ----------
@@ -33,6 +33,13 @@ class Degradation(ABC):
             state variables
         time : float
             time (h) related to degradation
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        float
+            material degradation rate; 0 by default
 
         """
         return 0
@@ -40,12 +47,19 @@ class Degradation(ABC):
     @abstractmethod
     def pol_deg(self, m, **kwargs):
         """
-        Wrapper function from material to polarization degradation ratio
+        Wrapper function from material to polarization degradation ratio.
 
         Parameters
         ----------
         m : float
             material variable (e.g., Ni radius or oxide scale thickness)
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        float
+            polarization degradation ratio; 1 (no degradation) by default
 
         """
         return 1
@@ -53,12 +67,19 @@ class Degradation(ABC):
     @abstractmethod
     def ohm_deg(self, m, **kwargs):
         """
-        Wrapper function from material to polarization degradation ratio
+        Wrapper function from material to polarization degradation ratio.
 
         Parameters
         ----------
         m : float
             material variable (e.g., Ni radius or oxide scale thickness)
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        float
+            ohmic degradation quantity; 0 (no degradation) by default
 
         """
         return 0
@@ -66,7 +87,7 @@ class Degradation(ABC):
 
 class NoDegradation(Degradation):
     """
-    Default degradation class = No degradation
+    Default degradation class = No degradation.
     """
 
     def __init__(self):
@@ -76,7 +97,7 @@ class NoDegradation(Degradation):
 
     def material_dt(self, m, state, time, **kwargs):
         """
-        Default material degradation ODE => returns 0
+        Default material degradation ODE => returns 0.
 
         Parameters
         ----------
@@ -86,6 +107,13 @@ class NoDegradation(Degradation):
             state variables
         time : float
             time (h) related to degradation
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        int
+            material degradation rate; always 0
 
         """
         return 0
@@ -93,12 +121,19 @@ class NoDegradation(Degradation):
     def pol_deg(self, m, **kwargs):
         """
         Wrapper function from material to polarization degradation ratio
-        returns 1 (no degradation)
+        returns 1 (no degradation).
 
         Parameters
         ----------
         m : float
             material variable (e.g., Ni radius or oxide scale thickness)
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        int
+            polarization degradation ratio; always 1 (no degradation)
 
         """
         return 1
@@ -106,12 +141,19 @@ class NoDegradation(Degradation):
     def ohm_deg(self, m, **kwargs):
         """
         Wrapper function from material to ohmic degradation ratio
-        returns 0 (no degradation)
+        returns 0 (no degradation).
 
         Parameters
         ----------
         m : float
             material variable (e.g., Ni radius or oxide scale thickness)
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        int
+            ohmic degradation ratio; always 0 (no degradation)
 
         """
         return 0
@@ -120,7 +162,7 @@ class NoDegradation(Degradation):
 class NickelAgglomeration(Degradation):
     """
     Degradation model for nickel agglomeration considering
-    percolation theory for binary mixture materials (i.e., Ni/YSZ)
+    percolation theory for binary mixture materials (i.e., Ni/YSZ).
 
     Parameters
     ----------
@@ -196,7 +238,7 @@ class NickelAgglomeration(Degradation):
 
     def z_ii(self, psi_i: float, psi_j: float, r_i: float, r_j: float) -> float:
         """
-        Coordination number between i,i
+        Coordination number between i,i.
 
         Parameters
         ----------
@@ -208,6 +250,11 @@ class NickelAgglomeration(Degradation):
             mean particle radius of i [m]
         r_j : float
             mean particle radius of j [m]
+
+        Returns
+        -------
+        float
+            coordination number between i,i [-]
 
         Reference
         ---------
@@ -218,7 +265,7 @@ class NickelAgglomeration(Degradation):
 
     def z_ij(self, psi_i: float, psi_j: float, r_i: float, r_j: float) -> float:
         """
-        Coordination number between i,j
+        Coordination number between i,j.
 
         Parameters
         ----------
@@ -230,6 +277,11 @@ class NickelAgglomeration(Degradation):
             mean particle radius of i [m]
         r_j : float
             mean particle radius of j [m]
+
+        Returns
+        -------
+        float
+            coordination number between i,j [-]
 
         Reference
         ---------
@@ -247,7 +299,7 @@ class NickelAgglomeration(Degradation):
 
     def p_i(self, psi_i: float, psi_j: float, r_i: float, r_j: float) -> float:
         """
-        Percolation probability of i-particle
+        Percolation probability of i-particle.
 
         Parameters
         ----------
@@ -259,6 +311,11 @@ class NickelAgglomeration(Degradation):
             mean particle radius of i [m]
         r_j : float
             mean particle radius of j [m]
+
+        Returns
+        -------
+        float
+            percolation probability of i-particle [-]
 
         Notes
         -----
@@ -280,12 +337,17 @@ class NickelAgglomeration(Degradation):
 
     def l_tpb(self, r_ed: float) -> float:
         """
-        Triple phase boundary length [1/m^2]
+        Triple phase boundary length [1/m^2].
 
         Parameters
         ----------
         r_ed : float
             mean electrode particle radius [m]
+
+        Returns
+        -------
+        float
+            triple phase boundary length [1/m^2]
 
         Notes
         -----
@@ -305,12 +367,17 @@ class NickelAgglomeration(Degradation):
 
     def l_tpb_eff(self, r_ed: float) -> float:
         """
-        Effective triple phase boundary length [1/m^2]
+        Effective triple phase boundary length [1/m^2].
 
         Parameters
         ----------
         r_ed : float
             mean electrode particle radius [m]
+
+        Returns
+        -------
+        float
+            effective triple phase boundary length [1/m^2]
 
         Notes
         -----
@@ -327,7 +394,7 @@ class NickelAgglomeration(Degradation):
 
     def xi_i(self, psi_i: float, psi_j: float, r_i: float, r_j: float) -> float:
         """
-        Number fractions of i
+        Number fractions of i.
 
         Parameters
         ----------
@@ -340,6 +407,11 @@ class NickelAgglomeration(Degradation):
         r_j : float
             mean particle radius of j [m]
 
+        Returns
+        -------
+        float
+            number fraction of i [-]
+
         References
         ----------
         1. https://doi.org/10.1016/j.jpowsour.2009.02.051
@@ -351,7 +423,7 @@ class NickelAgglomeration(Degradation):
         self, m: float, state: BoundaryData, time: float, **kwargs
     ) -> float:
         """
-        Ni radius rate of change [μm/h]
+        Ni radius rate of change [μm/h].
 
         Parameters
         ----------
@@ -361,6 +433,8 @@ class NickelAgglomeration(Degradation):
             state variables
         time : float
             time [h]
+        kwargs:
+            Not used (prevent overflow)
 
         Returns
         -------
@@ -425,26 +499,39 @@ class NickelAgglomeration(Degradation):
     def pol_deg(self, m, **kwargs):
         """
         Returns the polarization degradation ratio
-        In this case, actually the effective TPB length [1/m^2]
+        In this case, actually the effective TPB length [1/m^2].
 
         Parameters
         ----------
         m : float
             Nickel radius in micro meter [μm]
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        float
+            effective triple phase boundary length [1/m^2]
 
         """
         return self.l_tpb_eff(m / 1e6)
 
     def ohm_deg(self, *args, **kwargs):
         """
-        Returns null, as no ohmic degradation is considered
+        Returns null, as no ohmic degradation is considered.
+
+        Returns
+        -------
+        int
+            ohmic degradation ratio; always 0
+
         """
         return 0
 
 
 class InterconnectOxidation(Degradation):
     """
-    Degradation model for interconnect corrosion
+    Degradation model for interconnect corrosion.
 
     Parameters
     ----------
@@ -466,7 +553,7 @@ class InterconnectOxidation(Degradation):
 
     def material_dt(self, m, state, time, **kwargs):
         """
-        Interconnect oxidation rate [Wagner's theory]
+        Interconnect oxidation rate [Wagner's theory].
 
         Parameters
         ----------
@@ -476,30 +563,59 @@ class InterconnectOxidation(Degradation):
             state variables
         time : float
             time (h) related to degradation
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        float
+            rate of change of oxidation layer thickness squared [m^2/h]
+
         """
         return self.k_mg * np.exp(-self.E_ox / (R * state.T))
 
     def pol_deg(self, *args, **kwargs):
         """
-        Returns null, as no polarization degradation is considered
+        Returns null, as no polarization degradation is considered.
+
+        Parameters
+        ----------
+        args:
+            TODO
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        int
+            polarization degradation ratio; always 0
+
         """
         return 0
 
     def ohm_deg(self, m, **kwargs):
         """
-        Returns the interconnect oxidation layer thickness [m]
+        Returns the interconnect oxidation layer thickness [m].
 
         Parameters
         ----------
         m : float
             interconnect oxidation layer thickness squared [m^2]
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        float
+            interconnect oxidation layer thickness [m]
+
         """
         return m**0.5
 
 
 class ChromiumPoison(Degradation):
     """
-    Degradation model for chromium poisoning of air electrodes
+    Degradation model for chromium poisoning of air electrodes.
 
     Parameters
     ----------
@@ -509,6 +625,7 @@ class ChromiumPoison(Degradation):
         exchange current density for chromium deposition [A]
     pol_active : bool
         flags if degradation for polarization resistance is active
+
     """
 
     def __init__(self, x_H2O: float, j0: float, E_act: float, pol_active=True):
@@ -521,7 +638,7 @@ class ChromiumPoison(Degradation):
 
     def material_dt(self, m, state, time, **kwargs):
         """
-        Chromium poisoning rate
+        Chromium poisoning rate.
 
         Parameters
         ----------
@@ -531,6 +648,15 @@ class ChromiumPoison(Degradation):
             layer state conditions (voltage = activation voltage)
         time : float
             time [h]
+        kwargs:
+            Not used (prevent overflow)
+
+
+        Returns
+        -------
+        float
+            polarization degradation ratio rate of change [1/h]
+
         """
         P_CrO2 = (
             2.26e-2 * (state.P * self.x_H2O) ** 0.992 * np.exp(-6.7e4 / (R * state.T))
@@ -552,18 +678,32 @@ class ChromiumPoison(Degradation):
 
     def ohm_deg(self, m, **kwargs):
         """
-        Returns null, as no ohmic degradation is considered
+        Returns null, as no ohmic degradation is considered.
+
+        Returns
+        -------
+        int
+            ohmic degradation ratio; always 0
+
         """
         return 0
 
     def pol_deg(self, m, **kwargs):
         """
         Returns the polarization degradation ratio
-        In this case is just identity function
+        In this case is just identity function.
 
         Parameters
         ----------
         m : float
             polarization degradation ratio [1 = begining of life]
+        kwargs:
+            Not used (prevent overflow)
+
+        Returns
+        -------
+        float
+            polarization degradation ratio (equal to `m`) [-]
+
         """
         return m

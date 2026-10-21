@@ -10,7 +10,12 @@ import matplotlib.pyplot as plt
 
 def durability_test():
     """
-    Example of using the package to predict the voltage drop due to degradation
+    Example of using the package to predict the voltage drop due to degradation.
+
+    Returns
+    -------
+    None
+        Return value of ``matplotlib.pyplot.show`` after displaying the figure.
     """
     # Define reactants
     fuelMix = properties.Mixture(

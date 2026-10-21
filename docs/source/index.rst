@@ -6,12 +6,15 @@
 Welcome to nest-soc documentation!
 ================================================
 
+.. warning::
+    These docs are under active development and may change without notice..
+
 **nest-soc** (next-gen electrochemical system tools) is a Python library for modeling and simulation of solid oxide electrolysis cells.
 
 Check out the :doc:`usage` section for further information.
 
 .. note::
-   
+
    This project is under active development.
 
 .. toctree::
@@ -19,4 +22,3 @@ Check out the :doc:`usage` section for further information.
    :caption: Contents:
 
    usage
-
