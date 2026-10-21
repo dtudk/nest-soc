@@ -4,7 +4,7 @@ Thermodynamic and transport properties for ideal gases
 
 import numpy as np
 from numpy.polynomial.chebyshev import chebval
-from nest.constants import R, P_0
+from .constants import R, P_0
 
 
 class Specie:
@@ -31,7 +31,7 @@ class Specie:
     1. https://ntrs.nasa.gov/citations/20020085330
     """
 
-    def __init__(self, cs: tuple[np.ndarray], M: float, V: float):
+    def __init__(self, cs: tuple[np.ndarray, np.ndarray], M: float, V: float):
         self.cs = cs
         self.M = M
         self.V = V
@@ -267,20 +267,22 @@ class Mixture:
     1. https://doi.org/10.1021/j100845a020
     """
 
-    def __init__(self, species: tuple[Specie]):
-        self.species = species
+    def __init__(self, species: Specie | tuple[Specie, ...]):
+        # self.species = species
         if isinstance(species, Specie):
-            self.M_ij = 0
-            self.species = (species,)  # convert input to tuple
-        elif len(species) == 1:
-            self.M_ij = 0
-        else:
-            self.M_ij = np.array(
-                [
-                    [1 / (s_i.M ** (-1) + s_j.M ** (-1)) for s_i in species]
-                    for s_j in species
-                ]
-            )
+            # self.M_ij = 0
+            # self.species = (species,)  # convert input to tuple
+            species = (species, )
+        # elif len(species) == 1:
+        #     self.M_ij = 0
+        # else:
+        self.species = species
+        self.M_ij = np.array(
+            [
+                [1 / (s_i.M ** (-1) + s_j.M ** (-1)) for s_i in species]
+                for s_j in species
+            ]
+        )
 
     def viscosity(self, T, xs):
         """
@@ -319,7 +321,9 @@ class Mixture:
 
         return float(viscosity) if viscosity.ndim == 0 else viscosity
 
-    def D_ij(self, i: int, j: int, T: float, P: float) -> float:
+    def D_ij(
+        self, i: int, j: int, T: float | np.ndarray, P: float | np.ndarray
+    ) -> float | np.ndarray:
         """
         Binary diffusivities [m^2/s]
 

@@ -67,7 +67,7 @@ class Reaction(ABC):
         return self.k * np.exp(-self.E / (R * T))
 
     @abstractmethod
-    def rate(self, T: float, Ps: np.ndarray, gases: Mixture):
+    def rate(self, T: float, Ps: np.ndarray, gases: Mixture | None = None):
         """
         Kinetic reaction rate [mol/m2]
 
@@ -107,7 +107,7 @@ class NoReaction(Reaction):
         self.nu = np.array([0])
         self.index = np.array([0])
 
-    def rate(self, T, Ps):
+    def rate(self, T, Ps, gases=None):
         return 0
 
 
@@ -126,7 +126,7 @@ class WaterGasShift(Reaction):
     1. https://doi.org/10.1016/j.ijheatmasstransfer.2004.04.010
     """
 
-    def rate(self, T, Ps):
+    def rate(self, T, Ps, gases=None):
         H2_i, H2O_i, CO2_i, CO_i = self.index
         P = sum(Ps)
         x = Ps / P
@@ -145,7 +145,7 @@ class Cell:
         cell active area [m^2]
     electrode_fuel : Layer
         fuel-side electrode layer
-    electrolyte : tuple[Layer]
+    electrolyte : tuple[Layer, ...]
         tuple of electrolyte-like layers
     electrode_air : Layer
         air-side electrode layer
@@ -166,14 +166,14 @@ class Cell:
         self,
         area: float,
         electrode_fuel: Layer,
-        electrolyte: Layer,
+        electrolyte: tuple[Layer, ...],
         electrode_air: Layer,
         elements: int = 10,
         reactions: tuple[Reaction] = (NoReaction(),),
-        delta_channel=0.001,
-        fuel_channel=None,
-        air_channel=None,
-        fuel_support=None,
+        delta_channel = 0.001,
+        fuel_channel: ChannelGeometry | None = None,
+        air_channel: ChannelGeometry | None = None,
+        fuel_support = None,
     ):
         self.area = area
         self.electrode_fuel = electrode_fuel
@@ -588,7 +588,7 @@ class Cell:
         else:
             #boundary.V = 0.7*(1-0.0035*t/1000)
             boundary.V = 0.7*(1-0.0030*t/1000)
-            boundary.j = 0.5E4    
+            boundary.j = 0.5E4
             boundary.T = 650+273.15
         """
         steady_solution = self.solve_time_step(y, boundary, mode)

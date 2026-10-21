@@ -83,6 +83,11 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
     Exports all spatial fields and splits worksheets at Excel's row limit.
     Circuit solutions also export capacitor voltage and total current.
     """
+    if solution is not None and protocol is None:
+        raise ValueError("protocol is required when solution is given")
+    if Z is not None and frequencies is None:
+        raise ValueError("frequencies is required when Z is given")
+
     from openpyxl import Workbook
     from openpyxl.cell import WriteOnlyCell
 
@@ -136,7 +141,7 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
             for iz, depth in enumerate(depths):
                 for ix, x in enumerate(model.grid.x_air if side == "air" else model.grid.x):
                     row = [t, x, depth]
-                    if psi is not None:
+                    if psi is not None and eta is not None:
                         row += [psi[iz, ix], eta[iz, ix]]
                     row += [*c[:, iz, ix], *fractions[:, iz, ix]]
                     add(f"{prefix}_{region}", header, row)
@@ -174,6 +179,7 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
     if steady is not None:
         state, voltage = steady
         snapshot("steady", None, getattr(state, "x", state), voltage)
+<<<<<<< HEAD:nest/eis/postprocess.py
     if solution is not None:
         for index, (t, state) in enumerate(zip(solution.t, solution.y.T)):
             voltage = (solution.voltage[index] if hasattr(solution, "voltage")
@@ -183,9 +189,14 @@ def save_results(model, filename, *, steady=None, solution=None, protocol=None,
                 add("transient_circuit",
                     ["time_s", "current_A", "capacitor_voltage_V"],
                     [t, solution.current[index], solution.capacitor_voltage[index]])
+=======
+    if solution is not None and protocol is not None:
+        for t, state in zip(solution.t, solution.y.T):
+            snapshot("transient", t, state, _voltage(model, state, protocol, t))
+>>>>>>> 0424770c0baa875ca7e97406d86781a8d2a62185:nest/packages/eis/postprocess.py
             add("command", ["time_s", "control", "value"],
                 [t, protocol.control_mode, protocol(t)])
-    if Z is not None:
+    if Z is not None and frequencies is not None:
         for f, z in zip(frequencies, Z):
             add("impedance", ["frequency_Hz", "real_ohm_m2", "imag_ohm_m2",
                               "minus_imag_ohm_m2", "magnitude_ohm_m2", "phase_deg"],
@@ -276,7 +287,7 @@ def _trace(model, state, protocol, t, quantity, side, region, species, location,
     if location == "mean":
         return values.mean()
     coordinates = model.grid.x_air if side == "air" else model.grid.x
-    channel = getattr(model.cell, f"{side}_channel")
+    channel = getattr(model, f"{side}_channel")
     x = {"inlet": coordinates[0], "center": channel.length / 2,
          "outlet": coordinates[-1]}[location]
     return np.interp(x, coordinates, values)

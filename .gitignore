@@ -14,3 +14,10 @@ dist/
 .vscode/
 .DS_Store
 misc/
+
+## Tutorials
+nest/examples/tutorials/tutorial_results/*
+# ^^ No need to push figures
+
+nest/examples/tutorials/*.py
+# ^^ Oliver's way to run notebooks
