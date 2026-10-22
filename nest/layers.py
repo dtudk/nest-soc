@@ -58,13 +58,13 @@ class Kinetic:
         nu: np.ndarray = np.array([0]),
         n_e: float = 2.0,
         alpha: float = 0.0,
-        beta: float =0,
+        beta: float = 0,
         gamma: float | None = None,
         p: np.ndarray = np.array([0]),
         theta: float = 1.0,
         E_act: float = 0.0,
         C: float = 1e-5,
-        exchange_current_prefactor=None,
+        exchange_current_prefactor = None,
     ):
         if gamma is not None and exchange_current_prefactor is not None:
             raise ValueError(
@@ -85,8 +85,11 @@ class Kinetic:
         self.C = C
 
     def j_0(self, T: float, Ps: np.ndarray) -> float:
-        """
+        r"""
         Exchange current density [A/m^2] or current per TPB length [A/m].
+
+        .. math::
+            j_0 = \gamma \, T^{\theta} \exp\left(-\frac{E_{\mathrm{act}}}{R T}\right) \prod_i \left(\frac{P_i}{P_{\mathrm{atm}}}\right)^{p_i}
 
         Parameters
         ----------
@@ -116,8 +119,11 @@ class Kinetic:
         )
 
     def mol_flux(self, j: float) -> np.ndarray:
-        """
+        r"""
         Molar flux [mol/(m^2 s)].
+
+        .. math::
+            J_{s_i} = \frac{\nu_i \, j}{n_e F}
 
         Parameters
         ----------
@@ -134,8 +140,11 @@ class Kinetic:
         return self.nu * j / (self.n_e * F)
 
     def V_nernst_half(self, T, Ps):
-        """
+        r"""
         Voltage for electrode side reaction [V].
+
+        .. math::
+            V = \frac{1}{n_e F} \sum_i \nu_i \, g_i(T, P_i), \qquad \text{or} \qquad V = \frac{RT}{n_e F} \sum_i \nu_i \log\left(\frac{P_i}{P_0}\right)
 
         Parameters
         ----------
@@ -172,8 +181,11 @@ class Kinetic:
             ) / (self.n_e * F)
 
     def V_thermoneutral_half(self, T):
-        """
+        r"""
         Voltage for electrode side reaction [V].
+
+        .. math::
+            V_{\mathrm{tn}} = \frac{1}{n_e F} \sum_i \nu_i \, h_i(T)
 
         Parameters
         ----------
@@ -196,8 +208,11 @@ class Kinetic:
             ) / (self.n_e * F)
 
     def Vt_nernst_half(self, T):
-        """
+        r"""
         Voltage for electrode side reaction at reference pressure [V].
+
+        .. math::
+            V^0 = \frac{1}{n_e F} \sum_i \nu_i \, g_i^0(T)
 
         Parameters
         ----------
@@ -244,8 +259,11 @@ class Kinetic:
 
 
 class ButlerVolmer(Kinetic):
-    """
+    r"""
     Butler-Volmer half-reaction kinetics.
+
+    .. math::
+        j = j_0^{a/c} \left[ \exp\left( -\alpha_{a/c} \frac{n_e F \eta_{\mathrm{act}}^{a/c}}{R T} \right) - \exp\left( -(1 - \alpha_{a/c}) \frac{n_e F \eta_{\mathrm{act}}^{a/c}}{R T} \right) \right]
 
     Parameters
     ----------
@@ -461,8 +479,11 @@ class Conductivity:
 
 
 class PorousTransport:
-    """
+    r"""
     Generic diffusion over porous media.
+
+    .. math::
+        \frac{J_{s_i}}{D_{K,i}^{\mathrm{eff}}} + \sum_{j \neq i} \frac{x_j J_{s_i} - x_i J_{s_j}}{D_{ij}^{\mathrm{eff}}} = -\frac{1}{R T} \left( \frac{\mathrm{d} p_i}{\mathrm{d} x} + \frac{B_0 p_i}{\mu D_{K,i}^{\mathrm{eff}}} \frac{\mathrm{d} p}{\mathrm{d} x} \right)
 
     Parameters
     ----------
@@ -603,8 +624,11 @@ class PorousTransport:
 
 
 class BinaryFick(PorousTransport):
-    """
+    r"""
     Fick diffusion model for binary mixture.
+
+    .. math::
+        J_{s_i} = -\frac{D_i^{\mathrm{eff}}}{R T} \frac{\mathrm{d} p_i}{\mathrm{d} x}
 
     Parameters
     ----------
@@ -703,8 +727,11 @@ class BinaryFick(PorousTransport):
 
 
 class StefanMaxwell(PorousTransport):
-    """
+    r"""
     Stefan-Maxwell gas model for multi-component mixture.
+
+    .. math::
+        -\frac{1}{R T} \frac{\mathrm{d} p_i}{\mathrm{d} x} = \sum_{j \neq i} \frac{x_j J_{s_i} - x_i J_{s_j}}{D_{ij}^{\mathrm{eff}}}
 
     Parameters
     ----------
