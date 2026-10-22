@@ -1,6 +1,7 @@
 """Shared model for tests."""
 
 import pytest
+import numpy as np
 
 from nest.boundary import BoundaryData
 from nest.cell import Cell, ChannelGeometry
@@ -17,7 +18,7 @@ def model():
         transport=transport,
         kinetic=ButlerVolmer(
             gas=Mixture((BasicSpecies.H2, BasicSpecies.H2O)),
-            nu=[-1, 1],
+            nu=np.array([-1, 1]),
             alpha=0.5,
             beta=0.5,
             theta=0,
@@ -32,7 +33,7 @@ def model():
         transport=transport,
         kinetic=ButlerVolmer(
             gas=Mixture((BasicSpecies.O2, BasicSpecies.N2)),
-            nu=[-1, 0],
+            nu=np.array([-1, 0]),
             n_e=4,
             alpha=0.5,
             beta=0.5,

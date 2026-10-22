@@ -1,4 +1,4 @@
-"""Model the effects of external inductance 
+"""Model the effects of external inductance
 and other electrical circuit components.
 """
 
@@ -51,7 +51,7 @@ class ExternalCircuit:
         """Total external series resistance [ohm]."""
         return self.wiring_resistance + self.shunt_resistance
 
-    
+
     def derivatives(
         self,
         current: float,
@@ -59,7 +59,13 @@ class ExternalCircuit:
         cell_voltage: float,
         source_voltage: float,
     ) -> tuple[float, float]:
-        """Returns dI/dt [A/s] and dVc/dt [V/s].
+        """
+        Paramters
+        ---------
+
+        Returns
+        -------
+            dI/dt [A/s] and dVc/dt [V/s].
         """
         dcurrent = (
             cell_voltage - source_voltage
@@ -69,5 +75,3 @@ class ExternalCircuit:
         dcapacitor_voltage = current / self.capacitance
 
         return dcurrent, dcapacitor_voltage
-
-

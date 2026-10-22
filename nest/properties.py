@@ -285,8 +285,6 @@ class Specie:
         ----------
         T : float
             Temperature [K]
-        P : float
-            Absolute pressure [Pa]
 
         Returns
         -------

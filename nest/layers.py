@@ -191,8 +191,6 @@ class Kinetic:
         ----------
         T : float
             Temperature [K]
-        Ps : numpy.ndarray
-            Partial pressures
 
         Returns
         -------

@@ -247,10 +247,6 @@ class Cell:
         ----------
         T : float
             Temperature [K]
-        Ps_fuel : np.ndarray
-            Partial pressure for fuel side [Pa]
-        Ps_air : np.ndarray
-            Partial pressure for air side [Pa]
 
         Returns
         -------
@@ -293,10 +289,6 @@ class Cell:
         ----------
         T : float
             Temperature [K]
-        Ps_fuel : np.ndarray
-            Partial pressure for fuel side [Pa]
-        Ps_air : np.ndarray
-            Partial pressure for air side [Pa]
 
         Returns
         -------

@@ -2,7 +2,7 @@
 [lint]
 preview = true
 explicit-preview-rules = true          # only opt in to the preview rules named below
-select = ["E", "F", "D4", "D417", "DOC201"]
+select = ["E", "F", "D4", "D417", "DOC201", "DOC102"]
 ignore = ["E501", "D400", "D401"]
 
 [lint.pydocstyle]

@@ -576,6 +576,11 @@ class NickelMigration(Degradation):
             current density [A/m^2]
         eta : float
             fuel electrode overpotential [V]
+
+        Returns
+        -------
+        bool
+            True if the threshold is reached; always False if no threshold is set
         """
         if self.threshold is None or self.rate_after_threshold is None:
             return False
@@ -593,8 +598,14 @@ class NickelMigration(Degradation):
             state variables
         time : float
             time (h) related to degradation
-        eta_fuel : float
-            fuel electrode overpotential [V], calculated by the cell model
+        **kwargs
+            must contain ``eta_fuel``, the fuel electrode overpotential [V],
+            calculated by the cell model
+
+        Returns
+        -------
+        float
+            Ni-depleted zone growth rate [m/h]
         """
         eta_fuel = kwargs["eta_fuel"]
         if self.threshold_reached(state.T, state.j, eta_fuel):
@@ -604,6 +615,11 @@ class NickelMigration(Degradation):
     def pol_deg(self, *args, **kwargs):
         """
         Returns null, as no polarization degradation is considered
+
+        Returns
+        -------
+        int
+            polarization degradation ratio; always 0
         """
         return 0
 
@@ -614,6 +630,13 @@ class NickelMigration(Degradation):
         Parameters
         ----------
         m : float
+            Ni-depleted zone thickness [m]
+        **kwargs
+            unused
+
+        Returns
+        -------
+        float
             Ni-depleted zone thickness [m]
         """
         return m
