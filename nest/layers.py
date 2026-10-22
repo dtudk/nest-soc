@@ -64,14 +64,14 @@ class Kinetic:
         theta: float = 1.0,
         E_act: float = 0.0,
         C: float = 1e-5,
-        exchange_current_prefactor = None,
+        exchange_current_prefactor=None,
     ):
         if gamma is not None and exchange_current_prefactor is not None:
             raise ValueError(
                 "Supply either gamma or exchange_current_prefactor, not both"
             )
         # Related to reaction balance
-        self.gas = gas
+        self.gas = gas if isinstance(gas, Mixture) else Mixture(gas)
         self.nu = np.array(nu)
         self.n_e = n_e
         # Related to exchange current density
@@ -172,8 +172,8 @@ class Kinetic:
                         R * T / (self.n_e * F) * nu * np.log(partial_pressure / P_0)
                     )
             return potential
-        if isinstance(self.gas.species, Specie):
-            return self.nu[0] * self.gas.species.g(T, Ps[0]) / (self.n_e * F)
+        # if isinstance(self.gas.species, Specie):
+        #     return self.nu[0] * self.gas.species.g(T, Ps[0]) / (self.n_e * F)
         else:
             return sum(
                 nu_i * gas_i.g(T, Ps_i)
@@ -198,12 +198,12 @@ class Kinetic:
             Half-reaction thermoneutral voltage [V]
 
         """
-        if isinstance(self.gas.species, Specie):
-            return self.nu[0] * self.gas.species.h(T) / (self.n_e * F)
-        else:
-            return sum(
-                nu_i * gas_i.h(T) for nu_i, gas_i in zip(self.nu, self.gas.species)
-            ) / (self.n_e * F)
+        # if isinstance(self.gas.species, Specie):
+        #     return self.nu[0] * self.gas.species.h(T) / (self.n_e * F)
+        # else:
+        return sum(
+            nu_i * gas_i.h(T) for nu_i, gas_i in zip(self.nu, self.gas.species)
+        ) / (self.n_e * F)
 
     def Vt_nernst_half(self, T):
         r"""
@@ -223,12 +223,12 @@ class Kinetic:
             Half-reaction voltage at reference pressure [V]
 
         """
-        if isinstance(self.gas.species, Specie):
-            return self.nu[0] * self.gas.species.gT(T) / (self.n_e * F)
-        else:
-            return sum(
-                nu_i * gas_i.gT(T) for nu_i, gas_i in zip(self.nu, self.gas.species)
-            ) / (self.n_e * F)
+        # if isinstance(self.gas.species, Specie):
+        #     return self.nu[0] * self.gas.species.gT(T) / (self.n_e * F)
+        # else:
+        return sum(
+            nu_i * gas_i.gT(T) for nu_i, gas_i in zip(self.nu, self.gas.species)
+        ) / (self.n_e * F)
 
     def V(self, j: float, T: float, j0: float) -> float:
         """

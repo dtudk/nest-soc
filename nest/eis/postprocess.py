@@ -267,8 +267,9 @@ def _save_plot(fig, filename):
     return path
 
 
-def plot_impedance(cases, filename, *, experiment=None, 
-                   imaginary_ylim=None, real_lim=None):
+def plot_impedance(
+    cases, filename, *, experiment=None, imaginary_ylim=None, real_lim=None
+):
     """Save Nyquist and frequency plots.
 
     Parameters
@@ -318,8 +319,9 @@ def plot_impedance(cases, filename, *, experiment=None,
     return _save_plot(fig, filename)
 
 
-def _trace(model, state, protocol, t, quantity, side, region, species, location,
-           voltage=None):
+def _trace(
+    model, state, protocol, t, quantity, side, region, species, location, voltage=None
+):
     if voltage is None:
         voltage = _voltage(model, state, protocol, t)
     if quantity == "voltage":

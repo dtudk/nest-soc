@@ -174,6 +174,8 @@ def solve_transient(
     )
     start, end = t_span
     if circuit is not None:
+        if protocol.current_before is None or protocol.change_time is None:
+            raise ValueError("circuit requires a current_interrupt protocol")
         y0 = np.r_[y0, protocol.current_before * model.cell.area, 0.0]
 
     if protocol.change_time is not None and start < protocol.change_time < end:
@@ -186,7 +188,11 @@ def solve_transient(
     for i in range(len(segment_edges) - 1):
         segment_start = segment_edges[i]
         segment_end = segment_edges[i + 1]
-        circuit_active = circuit is not None and segment_start >= protocol.change_time
+        circuit_active = (
+            circuit is not None
+            and protocol.change_time is not None
+            and segment_start >= protocol.change_time
+        )
 
         def _time_derivatives(t: float, y: np.ndarray) -> np.ndarray:
             """Calculate state time derivatives using the protocol's voltage or current.
@@ -200,11 +206,17 @@ def solve_transient(
             """
             if circuit is not None:
                 cell_state, current, capacitor_voltage = y[:-2], y[-2], y[-1]
-                voltage = model.voltage_for_current(cell_state, current / model.cell.area)
+                voltage = model.voltage_for_current(
+                    cell_state, current / model.cell.area
+                )
                 cell_rate = model.time_derivatives(t, cell_state, voltage)
-                circuit_rate = circuit.derivatives(
-                    current, capacitor_voltage, voltage, source_voltage
-                ) if circuit_active else (0.0, 0.0)
+                circuit_rate = (
+                    circuit.derivatives(
+                        current, capacitor_voltage, voltage, source_voltage
+                    )
+                    if circuit_active
+                    else (0.0, 0.0)
+                )
                 return np.r_[cell_rate, circuit_rate]
             if protocol.control_mode == "current":
                 if t == segment_end == protocol.change_time:
@@ -255,8 +267,12 @@ def solve_transient(
         solution.capacitor_voltage = solution.y[-1].copy()
         solution.y = solution.y[:-2]
         solution.current_density = solution.current / model.cell.area
-        solution.voltage = np.array([
-            model.voltage_for_current(state, current_density)
-            for state, current_density in zip(solution.y.T, solution.current_density)
-        ])
+        solution.voltage = np.array(
+            [
+                model.voltage_for_current(state, current_density)
+                for state, current_density in zip(
+                    solution.y.T, solution.current_density
+                )
+            ]
+        )
     return solution

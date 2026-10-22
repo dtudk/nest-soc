@@ -278,7 +278,9 @@ class Cell:
         float
             Heat capacity flow [W/K]
         """
-        species = gas.species if isinstance(gas.species, (tuple, list)) else (gas.species,)
+        species = (
+            gas.species if isinstance(gas.species, (tuple, list)) else (gas.species,)
+        )
         return sum(n_i * specie.cp(T) for n_i, specie in zip(n, species))
 
     def Vt_nernst(self, T: float) -> float:
@@ -499,9 +501,18 @@ class Cell:
         T_out = boundary.T
         if self.energy_balance:
             # Adiabatic: heat released j*A*(V_thermoneutral - V) heats both flows
-            C_fuel = self.heat_capacity_flow(self.electrode_fuel.kinetic.gas, n_out_fuel, boundary.T)
-            C_air = self.heat_capacity_flow(self.electrode_air.kinetic.gas, n_out_air, boundary.T)
-            heat = j * self.area / self.elements * (self.V_thermoneutral(boundary.T) - boundary.V)
+            C_fuel = self.heat_capacity_flow(
+                self.electrode_fuel.kinetic.gas, n_out_fuel, boundary.T
+            )
+            C_air = self.heat_capacity_flow(
+                self.electrode_air.kinetic.gas, n_out_air, boundary.T
+            )
+            heat = (
+                j
+                * self.area
+                / self.elements
+                * (self.V_thermoneutral(boundary.T) - boundary.V)
+            )
             T_out = boundary.T + heat / (C_fuel + C_air)
         P_out = boundary.P  # Simplified for now - Isobaric
         return BoundaryData(
@@ -798,8 +809,12 @@ class Cell:
                 if layer.degradation.ohm_active:
                     in_b.V = steady_solution[index + 2 + k][j]
                     ohm_deg_dt[i + j * n_ohm_deg] = layer.degradation.material_dt(
-                        y[i + j * n_ohm_deg + n_pol_deg * self.elements], in_b, t,
-                        eta_fuel=steady_solution[index][j],     # in case ni migration depends on overpotential
+                        y[i + j * n_ohm_deg + n_pol_deg * self.elements],
+                        in_b,
+                        t,
+                        eta_fuel=steady_solution[index][
+                            j
+                        ],  # in case ni migration depends on overpotential
                     )
                     i += 1
         power_dt = [boundary.j * boundary.V]

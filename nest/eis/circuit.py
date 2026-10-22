@@ -2,7 +2,6 @@
 and other electrical circuit components.
 """
 
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -51,7 +50,6 @@ class ExternalCircuit:
         """Total external series resistance [ohm]."""
         return self.wiring_resistance + self.shunt_resistance
 
-
     def derivatives(
         self,
         current: float,
@@ -68,8 +66,10 @@ class ExternalCircuit:
             dI/dt [A/s] and dVc/dt [V/s].
         """
         dcurrent = (
-            cell_voltage - source_voltage
-            - self.resistance * current - capacitor_voltage
+            cell_voltage
+            - source_voltage
+            - self.resistance * current
+            - capacitor_voltage
         ) / self.inductance
 
         dcapacitor_voltage = current / self.capacitance

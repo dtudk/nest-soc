@@ -536,8 +536,8 @@ class NickelMigration(Degradation):
     Ni particles migrate away from the fuel electrode/electrolyte interface,
     leaving a Ni-depleted zone that conducts only ions and adds ohmic
     resistance (like a thicker electrolyte). The Ni migration rate can depend
-    on temperature, current density, and fuel electrode overpotential, 
-    or on only some of them, depending on the case. 
+    on temperature, current density, and fuel electrode overpotential,
+    or on only some of them, depending on the case.
     Once a threshold is reached, the migration can follow a different rate.
     The threshold can also depend on T, j, eta.
 
@@ -556,7 +556,9 @@ class NickelMigration(Degradation):
         activates the ohmic degradation modeling in simulation
     """
 
-    def __init__(self, rate, threshold=None, rate_after_threshold=None, ohm_active=True):
+    def __init__(
+        self, rate, threshold=None, rate_after_threshold=None, ohm_active=True
+    ):
         self.m0 = 0
         self.rate = rate
         self.threshold = threshold
@@ -608,7 +610,9 @@ class NickelMigration(Degradation):
             Ni-depleted zone growth rate [m/h]
         """
         eta_fuel = kwargs["eta_fuel"]
-        if self.threshold_reached(state.T, state.j, eta_fuel):
+        if self.rate_after_threshold is not None and self.threshold_reached(
+            state.T, state.j, eta_fuel
+        ):
             return self.rate_after_threshold(state.T, state.j, eta_fuel)
         return self.rate(state.T, state.j, eta_fuel)
 
