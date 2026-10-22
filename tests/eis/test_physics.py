@@ -7,7 +7,7 @@ import numpy as np
 from nest.constants import F, R, P_atm
 from nest.layers import Layer, PorousTransport
 from nest.properties import BasicSpecies, Mixture
-from nest.packages.eis import Model
+from nest.eis import Model
 
 
 def test_equilibrium(model):

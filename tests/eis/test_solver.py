@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from nest.packages.eis import solve_steady, solve_transient, voltage_ramp
+from nest.eis import solve_steady, solve_transient, voltage_ramp
 
 
 def test_steady(model):

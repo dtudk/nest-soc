@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from nest.packages.eis import impedance
+from nest.eis import impedance
 
 
 R0 = 1.1e-5  # Ohmic resistance
