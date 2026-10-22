@@ -16,10 +16,15 @@ dist/
 misc/
 
 ## Tutorials
+nest/examples/tutorials/tutorial_results
 nest/examples/tutorials/tutorial_results/*
 
 ## Javid's examples
 nest/examples/javid_examples/
 
+# Oliver's way to run notebooks
 nest/examples/tutorials/*.py
-# ^^ Oliver's way to run notebooks
+
+# an option to have local notes and test that doesn't get pushed (Or secrets)
+local
+local/*
