@@ -1,4 +1,8 @@
-import warnings
+"""
+Behaviour of the gradient-aware species in ``nest.grad.properties``.
+
+Gradient values are checked against finite differences in ``test_gradients.py``.
+"""
 
 import numpy as np
 import pytest
@@ -8,66 +12,6 @@ from nest.grad.properties import BasicSpecies
 
 # Species that have a CoolProp viscosity fit (others raise NotImplementedError).
 FITTED = ["H2", "H2O", "O2", "N2"]
-
-
-# Run for every fitted species, at three scalar temperatures and one array of temperatures.
-@pytest.mark.parametrize("name", FITTED)
-@pytest.mark.parametrize("T", [600.0, 1000.0, 1400.0, np.linspace(550.0, 1450.0, 7)])
-def test_viscosity_grad_T_matches_finite_difference(name, T):
-    specie = getattr(BasicSpecies, name)
-    # Central finite difference: dmu/dT ~ (mu(T + h) - mu(T - h)) / 2h, step h in K.
-    h = 1e-3
-    numerical = (np.asarray(specie.viscosity(T + h)) - specie.viscosity(T - h)) / (2 * h)
-    analytical = specie.viscosity.grad_T(T)
-    # Largest relative difference between analytical and numerical gradient.
-    rel_diff = np.max(np.abs(analytical - numerical) / np.abs(numerical))
-    # Fail above 1e-3; warn (test still passes) above 1e-6.
-    if rel_diff > 1e-3:
-        pytest.fail(f"{name}: grad_T differs from finite difference by {rel_diff:.1e} (> 1e-3)")
-    if rel_diff > 1e-6:
-        warnings.warn(
-            f"{name}: grad_T differs from finite difference by {rel_diff:.1e} (> 1e-6)",
-            stacklevel=1,
-        )
-
-
-def numerical_jacobian(f, x, h=1e-3):
-    """Central-difference Jacobian J[i, j] = d f_i / d x_j of f: R^n -> R^m.
-
-    Perturbs one component x_j at a time, so it makes no assumption about how
-    the outputs depend on the inputs.
-
-    Returns
-    -------
-    numpy.ndarray
-        Jacobian of shape (m, n)
-    """
-    x = np.asarray(x, dtype=float)
-    columns = []
-    for j in range(x.size):
-        step = np.zeros_like(x)
-        step.flat[j] = h  # perturb only x_j
-        df = (np.asarray(f(x + step)) - np.asarray(f(x - step))) / (2 * h)
-        columns.append(np.ravel(df))  # column j: change of every output f_i
-    return np.stack(columns, axis=1)  # shape (m, n)
-
-
-@pytest.mark.parametrize("name", FITTED)
-def test_viscosity_grad_T_jacobian(name):
-    # T in R^3: compare the full analytical and numerical Jacobians d mu_i / d T_j.
-    specie = getattr(BasicSpecies, name)
-    T = np.array([600.0, 1000.0, 1400.0])
-    grad = specie.viscosity.grad_T(T)
-    assert grad.shape == T.shape  # one derivative per temperature
-    # Viscosity is element-wise (mu_i depends only on T_i), so grad_T holds the
-    # Jacobian diagonal. When copying this test for another property, build
-    # `analytical` from its gradient here.
-    analytical = np.diag(grad)
-    numerical = numerical_jacobian(specie.viscosity, T)
-    # atol covers off-diagonal entries that should be zero.
-    np.testing.assert_allclose(
-        analytical, numerical, rtol=1e-6, atol=1e-6 * np.max(np.abs(numerical))
-    )
 
 
 @pytest.mark.parametrize("name", FITTED)
