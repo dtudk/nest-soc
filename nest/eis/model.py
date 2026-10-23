@@ -410,7 +410,7 @@ class Model:
             Species concentrations [mol/m^3], shaped (2, n_z, n_x).
         species_source : float or ndarray
             Reaction source per total material volume [mol/(m^3 s)]; zero for support.
-        gas : Mixture
+        gas : ~nest.properties.Mixture
             Gas species and properties.
         transport : PorousTransport
             Porosity, tortuosity, and pore diameter.
