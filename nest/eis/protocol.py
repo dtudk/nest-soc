@@ -27,7 +27,10 @@ def voltage_ramp(
     tau: float,
     start: float = 0.0,
 ) -> _Protocol:
-    """Create an exponential voltage ramp.
+    r"""Create an exponential voltage ramp.
+
+    .. math ::
+        V_0 - (V_f - V_0)\exp\left\{\frac{t}{\tau}\right\}
 
     Parameters
     ----------
@@ -54,7 +57,10 @@ def current_interrupt(
     current_before: float,
     at: float = 0.0,
 ) -> _Protocol:
-    """Interrupt the mean current density.
+    r"""Interrupt the mean current density. (Heavy side function)
+
+    .. math ::
+        \overline{i}H_{t_at}(t)
 
     Parameters
     ----------

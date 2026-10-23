@@ -9,6 +9,7 @@ def impedance(
     time, voltage, current_density, frequencies, voltage_before, current_before
 ):
     """Calculate impedance from transient voltage and current responses.
+    Fast fourier transform
 
         Z(f) = -F{dV/dt} / F{dJ/dt}
 
