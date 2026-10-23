@@ -18,7 +18,7 @@ class Kinetic:
 
     Parameters
     ----------
-    gas : Mixture or Specie
+    gas : Mixture or ~nest.properties.Specie
         gas produced/consumed in reaction
     nu : numpy.ndarray
         reaction stoichoimetric coefficients
@@ -507,7 +507,7 @@ class PorousTransport:
         ----------
         T : float
             Temperature [K]
-        specie : Specie
+        specie : ~nest.properties.Specie
             Thermodynamic specie model
 
         Returns
