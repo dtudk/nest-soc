@@ -9,16 +9,18 @@ class differentiable:
     """
     Method decorator exposing registered gradients as ``obj.method.grad_<variable>``.
 
-    Used like ``property`` and its ``setter``::
+    Usage::
 
         @differentiable
         def viscosity(self, T, P=101325.0): ...
 
         @viscosity.grad("T")
-        def viscosity(self, T, P=101325.0): ...
+        def _viscosity_grad_T(self, T, P=101325.0): ...
 
     ``obj.viscosity(T)`` then calls the method and ``obj.viscosity.grad_T(T)``
-    its gradient with respect to ``T``.
+    its gradient with respect to ``T``. Gradients must be named
+    ``_<method>_grad_<variable>``; the docs template uses this name to list them
+    under their method.
 
     Parameters
     ----------
@@ -44,12 +46,18 @@ class differentiable:
         Returns
         -------
         callable
-            decorator storing the gradient method and returning this descriptor
+            decorator storing the gradient method and returning it unchanged
         """
 
         def register(gradient):
+            expected = f"_{self.__name__}_grad_{variable}"
+            if gradient.__name__ != expected:
+                raise NameError(
+                    f"gradient of {self.__name__!r} w.r.t. {variable!r} must be named "
+                    f"{expected!r}, got {gradient.__name__!r}"
+                )
             self.gradients[variable] = gradient
-            return self
+            return gradient
 
         return register
 

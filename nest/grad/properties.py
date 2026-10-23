@@ -82,18 +82,9 @@ class Specie(properties.Specie):
         return super().viscosity(T, P)
 
     @viscosity.grad("T")
-    def viscosity(self, T, P=101325.0):
+    def _viscosity_grad_T(self, T, P=101325.0):
         r"""
-        Temperature derivative of the pure-gas viscosity [Pa s/K].
-
-        .. math:: \frac{\partial \mu}{\partial T} = \frac{2}{T_{max} - T_{min}} \sum_k c_k T_k'(\theta)
-
-        Parameters
-        ----------
-        T : float or numpy.ndarray
-            Temperature [K].
-        P : float or numpy.ndarray, optional
-            Pressure [Pa], default 101325. Only affects output broadcasting.
+        :math:`\nabla_T` :meth:`~nest.grad.properties.Specie.viscosity`
 
         Returns
         -------

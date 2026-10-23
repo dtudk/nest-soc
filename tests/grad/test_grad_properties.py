@@ -52,6 +52,19 @@ def test_unregistered_gradient_raises():
         BasicSpecies.H2.viscosity.grad_P(1000.0)
 
 
+def test_gradient_name_is_enforced():
+    # Gradients must be named _<method>_grad_<variable> so the docs can nest them.
+    from nest.grad.differentiable import differentiable
+
+    @differentiable
+    def cp(self, T): ...
+
+    with pytest.raises(NameError, match="_cp_grad_T"):
+
+        @cp.grad("T")
+        def cp_derivative(self, T): ...
+
+
 def test_grad_species_in_mixture():
     # nest.grad species are drop-in replacements inside a nest.properties.Mixture.
     gas = properties.Mixture((BasicSpecies.H2, BasicSpecies.H2O))
