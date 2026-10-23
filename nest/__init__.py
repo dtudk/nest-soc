@@ -9,6 +9,7 @@ from nest import cell as cell
 from nest import boundary as boundary
 from nest import degradation as degradation
 from nest import eis as eis
+from nest import grad as grad
 
 __all__ = [
     "constants",
@@ -18,4 +19,5 @@ __all__ = [
     "boundary",
     "degradation",
     "eis",
+    "grad",
 ]
