@@ -25,6 +25,8 @@ class Specie:
     * Molar mass and thermodynamic properties from Ref. [1]
     * Gas constant value from Ref. [1], different from NIST
     * Reference pressure (1 bar) from Ref. [1]
+    * Species are compared by value (``cs``, ``M``, ``V``), so copies of a
+      specie are equal to it; do not modify these attributes after creation.
 
     References
     ----------
@@ -36,6 +38,35 @@ class Specie:
         self.cs = cs
         self.M = M
         self.V = V
+
+    def __eq__(self, other):
+        """
+        Compare species by value, including subclasses (e.g. ``nest.grad``).
+
+        Returns
+        -------
+        bool
+            True if ``cs``, ``M``, and ``V`` are equal
+        """
+        if not isinstance(other, Specie):
+            return NotImplemented
+        return (
+            self.M == other.M
+            and self.V == other.V
+            and len(self.cs) == len(other.cs)
+            and all(np.array_equal(a, b) for a, b in zip(self.cs, other.cs))
+        )
+
+    def __hash__(self):
+        """
+        Hash on ``M`` and ``V``; equal species always have equal hashes.
+
+        Returns
+        -------
+        int
+            hash value
+        """
+        return hash((self.M, self.V))
 
     def viscosity(self, T, P=101325.0):
         """

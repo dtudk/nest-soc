@@ -1,6 +1,28 @@
 import pytest
 
-from nest.properties import BasicSpecies, Mixture
+from nest.grad import properties as grad_properties
+from nest.properties import BasicSpecies, Mixture, Specie
+
+
+def test_specie_copy_is_equal():
+    # A specie built from the same data equals the original and hashes the same.
+    H2 = BasicSpecies.H2
+    copy = Specie(H2.cs, H2.M, H2.V)
+    assert copy == H2
+    assert hash(copy) == hash(H2)
+    assert {H2: "found"}[copy] == "found"  # works as a dict key
+
+
+def test_different_species_are_not_equal():
+    assert BasicSpecies.H2 != BasicSpecies.H2O
+    assert BasicSpecies.H2 != "H2"  # non-Specie objects are never equal
+
+
+def test_grad_specie_equals_base_specie():
+    # nest.grad species are copies, so they compare equal in both directions.
+    assert grad_properties.BasicSpecies.H2 == BasicSpecies.H2
+    assert BasicSpecies.H2 == grad_properties.BasicSpecies.H2
+    assert {BasicSpecies.H2: "found"}[grad_properties.BasicSpecies.H2] == "found"
 
 
 def test_specie_a():

@@ -9,32 +9,58 @@ from nest import properties
 from nest.grad.differentiable import differentiable
 
 
-class Specie(properties.Specie):
+def _unravel_specie_init(
+    specie: properties.Specie,
+) -> tuple[tuple[np.ndarray, np.ndarray], float, float]:
     """
-    Ideal gas specie with analytical property gradients.
-
-    Wraps a :class:`nest.properties.Specie` and reuses its data and fits.
+    Constructor arguments of a specie.
 
     Parameters
     ----------
     specie : nest.properties.Specie
-        specie to wrap, e.g. ``nest.properties.BasicSpecies.H2``
+        specie to read from
+
+    Returns
+    -------
+    tuple
+        ``(cs, M, V)`` as accepted by :class:`nest.properties.Specie`
+    """
+    return specie.cs, specie.M, specie.V
+
+class Specie(properties.Specie):
+    """
+    Ideal gas specie with analytical property gradients.
+
+    Same constructor as :class:`nest.properties.Specie`; use :meth:`from_specie`
+    to wrap an existing specie and reuse its fits.
+
+    Parameters
+    ----------
+    cs : tuple[numpy.ndarray]
+        NASA coefficients and temperature limits
+    M : float
+        molar mass [g/mol]
+    V : float
+        special atomic diffusion volumes [cm^3]
     """
 
-    def __init__(self, specie: properties.Specie):
-        super().__init__(specie.cs, specie.M, specie.V)
-        self._source = specie
-
-    def _viscosity_coefficients(self) -> tuple[float, ...]:
+    @classmethod
+    def from_specie(cls, specie: properties.Specie) -> "Specie":
         """
-        Chebyshev coefficients of the wrapped specie's viscosity fit.
+        Create a gradient-aware copy of an existing specie.
+
+        Parameters
+        ----------
+        specie : nest.properties.Specie
+            specie to wrap, e.g. ``nest.properties.BasicSpecies.H2``
 
         Returns
         -------
-        tuple of float
-            Chebyshev coefficients [Pa s]
+        Specie
+            new specie with the same data, reusing the wrapped specie's fits
         """
-        return self._source._viscosity_coefficients()
+        new_specie = cls(*_unravel_specie_init(specie))
+        return new_specie
 
     @differentiable
     def viscosity(self, T, P=101325.0):
@@ -89,10 +115,10 @@ class BasicSpecies:
     Gradient-aware versions of :class:`nest.properties.BasicSpecies`.
     """
 
-    H2 = Specie(properties.BasicSpecies.H2)
-    H2O = Specie(properties.BasicSpecies.H2O)
-    O2 = Specie(properties.BasicSpecies.O2)
-    N2 = Specie(properties.BasicSpecies.N2)
-    CO2 = Specie(properties.BasicSpecies.CO2)
-    CO = Specie(properties.BasicSpecies.CO)
-    CH4 = Specie(properties.BasicSpecies.CH4)
+    H2 = Specie.from_specie(properties.BasicSpecies.H2)
+    H2O = Specie.from_specie(properties.BasicSpecies.H2O)
+    O2 = Specie.from_specie(properties.BasicSpecies.O2)
+    N2 = Specie.from_specie(properties.BasicSpecies.N2)
+    CO2 = Specie.from_specie(properties.BasicSpecies.CO2)
+    CO = Specie.from_specie(properties.BasicSpecies.CO)
+    CH4 = Specie.from_specie(properties.BasicSpecies.CH4)
