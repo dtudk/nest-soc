@@ -8,10 +8,11 @@ __all__ = ["impedance"]
 def impedance(
     time, voltage, current_density, frequencies, voltage_before, current_before
 ):
-    """Calculate impedance from transient voltage and current responses.
+    r"""Calculate impedance from transient voltage and current responses.
     Fast fourier transform
 
-        Z(f) = -F{dV/dt} / F{dJ/dt}
+    .. math::
+        Z(f) = -\frac{F\left\{\frac{dV}{dt}\right\}}{F\left\{\frac{dJ}{dt}\right\}}
 
     Parameters
     ----------
@@ -45,31 +46,36 @@ def impedance(
 
     The Fourier transform of the time derivative of a signal X(t):
 
-        F{dX/dt} = integral (dX/dt) exp(-2*pi*i*f*(t-t0)) dt
+    .. math::
+        F\left\{\frac{dX}{dt}\right\} = \int \frac{dX}{dt} \exp(-2\pi i f (t-t0)) dt
 
     The sampled signal is approximated by piecewise-linear segments.
     Within each interval [t_k, t_(k+1)], its derivative is constant:
 
-        dX/dt = (X_(k+1) - X_k) / (t_(k+1) - t_k)
+    .. math::
+        \frac{dX}{dt} = \frac{X_{k+1} - X_k}{t_{k+1} - t_k}
 
     The Fourier integral is then evaluated analytically over each
     segment:
 
-        I_k(f) = dX_k * exp(-2*pi*i*f*(t_mid_k-t0))
-                 * sinc(f*dt_k)
+    .. math::
+        I_k(f) = dX_k \exp\{-2 \pi i f (t_{mid_k}- t_0)\}
+                 \text{sinc}(f dt_k)
 
     where:
 
-        dX_k    = X_(k+1) - X_k
-        dt_k    = t_(k+1) - t_k
-        t_mid_k = (t_k + t_(k+1)) / 2
+    .. math::
+        dX_k    &= X_{k+1} - X_k \\
+        dt_k    &= t_{k+1} - t_k \\
+        t_{mid_k} &= (t_k + t_{k+1}) / 2
 
-    and sinc(x) = sin(pi*x)/(pi*x).
+    and :math:`\text{sinc}(x) = \sin(\pi x)/(\pi x)`.
 
     The initial instantaneous change from the pre-transient steady
     state contributes X_0 - X_before. The complete transform is:
 
-        F{dX/dt} = (X_0 - X_before) + sum_k I_k(f)
+    .. math::
+        F\left\{\frac{dX}{dt}\right\} = (X_0 - X_{before}) + \sum_k I_k(f)
 
     """
 

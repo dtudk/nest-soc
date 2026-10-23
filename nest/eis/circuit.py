@@ -12,7 +12,7 @@ __all__ = ["ExternalCircuit"]
 
 @dataclass(frozen=True)
 class ExternalCircuit:
-    """External circuit definition for current-interrupt simulations.
+    r"""External circuit definition for current-interrupt simulations.
 
     Parameters
     ----------
@@ -30,13 +30,15 @@ class ExternalCircuit:
     After current interrupt, the external circuit is modeled as
     a series RLC circuit coupled to the electrochemical cell:
 
-        L*dI/dt = V_cell - V_source - (R_wire + R_shunt)*I - V_capacitor
-        C*dV_capacitor/dt = I
+    .. math::
+        L \frac{dI}{dt} &= V_{cell} - V_{source} - (R_{wire} + R_{shunt})I - V_{capacitor} \\
+        C \frac{dV_{capacitor}}{dt} &= I
 
     The initial conditions are:
 
-        I(0) = I_before
-        V_capacitor(0) = 0
+    .. math::
+        I(0) = I_{before}
+        V_{capacitor}(0) = 0
 
     """
 

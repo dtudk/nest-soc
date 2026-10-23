@@ -455,7 +455,7 @@ class Model:
         ) / transport.epsilon, molar_flux
 
     def _channel_gas_balance(self, side, concentrations, electrode_flux):
-        """Calculate channel concentration derivatives from flow and gas exchange.
+        r"""Calculate channel concentration derivatives from flow and gas exchange.
 
         Parameters
         ----------
@@ -473,7 +473,8 @@ class Model:
 
         Notes
         -----
-        dc/dt = -d(u*c)/dx - (w_active/A_channel)*N_out.
+        .. math::
+            \frac{dc}{dt} = -\frac{d(u c)}{dx} - (w_{active}/A_{channel}) N_{out}.
 
         """
         if side == "fuel":
@@ -516,7 +517,7 @@ class Model:
         )
 
     def time_derivatives(self, t: float, y: np.ndarray, voltage: float) -> np.ndarray:
-        """Evaluate the coupled electrochemical and gas conservation equations.
+        r"""Evaluate the coupled electrochemical and gas conservation equations.
 
         Parameters
         ----------
@@ -534,9 +535,11 @@ class Model:
 
         Notes
         -----
-        Electrode charge: C_vol*dpsi/dt = dj_ion/dz - i_F.
-        Porous gas: epsilon*dc/dt = -dN/dz + S.
-        Channel gas: dc/dt = -d(u*c)/dx - (w_active/A_channel)*N.
+        Electrode charge: :math:`C_{vol} \frac{d\psi}{dt} = \frac{dj_{ion}}{dz} - i_F`.
+
+        Porous gas: :math:`\epsilon \frac{dc}{dt} = -\frac{dN}{dz} + S`.
+
+        Channel gas: :math:`\frac{dc}{dt} = -\frac{d(u c)}{dx} - (w_{active}/A_{channel}) N`.
 
         """
         psi_f, psi_a, c_pf, c_pa, c_cf, c_ca, c_ps = self.unpack_state(y)
