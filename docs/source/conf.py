@@ -43,3 +43,15 @@ autoapi_options = [
     "show-module-summary",
     "special-members",
 ]  # default minus 'imported-members'
+
+
+def _skip_private_modules(app, what, name, obj, skip, options):
+    # "private-members" is needed for the nested _<method>_grad_<v> gradients,
+    # but private modules (e.g. nest.grad._utils) should not get a page.
+    if what == "module" and name.rsplit(".", 1)[-1].startswith("_"):
+        return True
+    return skip
+
+
+def setup(app):
+    app.connect("autoapi-skip-member", _skip_private_modules)
