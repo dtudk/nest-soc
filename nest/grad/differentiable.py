@@ -80,9 +80,13 @@ class _BoundDifferentiable:
     """
 
     def __init__(self, descriptor: differentiable, obj):
+        # Bound on every attribute access, so only the essential metadata is copied
+        # (functools.update_wrapper dominated the cost of the cell solves).
         self._descriptor = descriptor
         self._obj = obj
-        functools.update_wrapper(self, descriptor.func)
+        self.__name__ = descriptor.__name__
+        self.__doc__ = descriptor.__doc__
+        self.__wrapped__ = descriptor.func
 
     def __call__(self, *args, **kwargs):
         return self._descriptor.func(self._obj, *args, **kwargs)
