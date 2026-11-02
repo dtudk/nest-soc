@@ -7,7 +7,12 @@ The **nest-soc** package is a work in progress and this is a early preview versi
 2. Polarization curve simulation for syngas mixture operation;
 3. Voltage degradation prediction for solid oxide fuel cell operation
 4. Polarization curve simulation for CO2-CO operation and carbon formation prdiction
-5. Electrochemical impedance spectrum (EIS) simulation
+5. Electrochemical impedance spectroscopy (EIS) simulation.
+
+The `nest.eis` subpackage provides the model, steady-state and transient
+solvers, voltage-ramp and current-interruption protocols, impedance extraction,
+plotting, and Excel export:
+
 
 ### Running preview
 1. Install dependencies specified in the [requirements file](requirements.txt) by running the following command (from the nest-soc root folder):

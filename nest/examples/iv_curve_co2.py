@@ -1,5 +1,5 @@
 """
-Package usage example for generating a iV curve operating with CO-CO2 mixture
+Package usage example for generating a iV curve operating with CO-CO2 mixture.
 """
 
 from time import process_time
@@ -14,7 +14,12 @@ from nest.constants import R
 
 def iv_curve_co2():
     """
-    Example of using the package for generating a iV curve operating with CO-CO2 mixture
+    Example of using the package for generating a iV curve operating with CO-CO2 mixture.
+
+    Returns
+    -------
+    None
+        Return value of ``matplotlib.pyplot.show`` after displaying the figure.
     """
     # Define reactants
     fuel_mix = properties.Mixture(
@@ -125,7 +130,7 @@ def iv_curve_co2():
     ax1.plot(
         currents / 1e4, voltages, marker="o", markersize=5, label="Model", color="r"
     )
-    ax1.set_xlabel("Current density (A/m^2)")
+    ax1.set_xlabel("Current density (A/cm^2)")
     ax1.set_ylabel("Cell voltage (V)")
     # Add experimental data for comparison - https://doi.org/10.1016/j.jpowsour.2017.10.097
     script_dir = Path(__file__).parent
@@ -143,7 +148,7 @@ def iv_curve_co2():
     ax2.axvline(x=-0.35, ls="--", label="Experiment limit")
     ax2.set_title("Carbon threshold [a>=1]")
     ax2.set_ylabel("Carbon deposition activity, a")
-    ax2.set_xlabel("Current density (A/m^2)")
+    ax2.set_xlabel("Current density (A/cm^2)")
     ax2.legend()
 
     plt.suptitle("60%CO+50%CO2 | 21%O2+79%N2 | 750 degC", fontsize=14)

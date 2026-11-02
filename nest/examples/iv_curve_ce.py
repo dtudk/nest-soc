@@ -1,5 +1,5 @@
 """
-Package usage example for generating a iV curve operating with syngas mixture
+Package usage example for generating a iV curve operating with syngas mixture.
 """
 
 from time import process_time
@@ -13,7 +13,12 @@ from nest import properties, layers, cell
 
 def iv_curve_ce():
     """
-    Example of using the package for generating a iV curve operating with syngas mixture
+    Example of using the package for generating a iV curve operating with syngas mixture.
+
+    Returns
+    -------
+    None
+        Return value of ``matplotlib.pyplot.show`` after displaying the figure.
     """
     # Define reactants
     fuel_mix = properties.Mixture(
@@ -116,7 +121,7 @@ def iv_curve_ce():
     ax.plot(
         currents / 1e4, voltages, marker="o", markersize=5, label="Model", color="r"
     )
-    ax.set_xlabel("Current density (A/m^2)")
+    ax.set_xlabel("Current density (A/cm^2)")
     ax.set_ylabel("Cell voltage (V)")
 
     # Add experimental data for comparison
