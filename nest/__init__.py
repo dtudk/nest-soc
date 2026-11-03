@@ -9,7 +9,8 @@ from nest import cell as cell
 from nest import boundary as boundary
 from nest import degradation as degradation
 from nest import eis as eis
-from nest.problem import Problem
+from nest import problem as problem
+from nest import solvers as solvers
 
 __all__ = [
     "constants",
@@ -19,5 +20,6 @@ __all__ = [
     "boundary",
     "degradation",
     "eis",
-    "Problem"
+    "problem",
+    "solvers",
 ]

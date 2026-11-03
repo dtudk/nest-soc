@@ -10,7 +10,12 @@ __all__ = ["voltage_ramp", "current_interrupt"]
 
 @dataclass(frozen=True)
 class _Protocol:
-    """Voltage or current command with an optional transition time [s]."""
+    """Voltage or current command with an optional transition time [s].
+
+    Note
+    ----
+    Essentially a subclass of Boundary, since it is a dynamic boundary condition, just computeded diffreently.
+    """
 
     value_at_time: Callable[[float], float]
     control_mode: str = "voltage"
