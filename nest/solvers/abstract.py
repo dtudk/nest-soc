@@ -5,7 +5,7 @@ from enum import Enum
 
 if TYPE_CHECKING:
     import numpy as np
-    from nest import Problem
+    from nest._temp.class_updates import Problem  # moves to nest.problem
 
 class Mode(Enum):
     CURRENT = "current"

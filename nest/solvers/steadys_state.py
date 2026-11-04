@@ -1,11 +1,15 @@
-from .abstract import Solver, NestResult, Mode
+"""
+Steady-state solver for a :class:`~nest._temp.class_updates.Problem`.
+"""
+
+from dataclasses import dataclass, field
 
 import numpy as np
 from scipy.optimize import root
 
 from nest._temp.class_updates import Problem
-from nest.constants import F, R
-from dataclasses import dataclass, field
+
+from .abstract import Mode, NestResult, Solver
 
 @dataclass
 class SSResult(NestResult):
@@ -84,7 +88,14 @@ class SteadyStateSolver(Solver):
         return self._solve_current(problem, y0)
 
     def _solve_voltage(self, problem: Problem, voltage: float, y0) -> SSResult:
-        """Potentiostatic solve: root of ``f(y, V)``, one column at a time with downstream coupling."""
+        """
+        Potentiostatic solve: root of ``f(y, V)``, one column at a time with downstream coupling.
+
+        Returns
+        -------
+        SSResult
+            steady state at ``voltage``
+        """
         y_scale = problem.typical_state()
         if not problem.downstream_coupling:
             return self._solve_all(problem, voltage, y0, y_scale)
@@ -110,12 +121,26 @@ class SteadyStateSolver(Solver):
         return self._result(problem, z.ravel() * y_scale, voltage, Mode.VOLTAGE, nfev)
 
     def _solve_all(self, problem: Problem, voltage: float, y0, y_scale) -> SSResult:
-        """Potentiostatic solve of all unknowns at once (no column structure)."""
+        """
+        Potentiostatic solve of all unknowns at once (no column structure).
+
+        Returns
+        -------
+        SSResult
+            steady state at ``voltage``
+        """
         z, nfev = self._root(lambda z: problem.fluxes(z * y_scale, voltage), y0 / y_scale, "the full state")
         return self._result(problem, z * y_scale, voltage, Mode.VOLTAGE, nfev)
 
     def _root(self, residual, z0, label: str) -> tuple:
-        """Solve ``residual(z) = 0`` from ``z0``; returns the solution and the evaluations used."""
+        """
+        Solve ``residual(z) = 0`` from ``z0``.
+
+        Returns
+        -------
+        tuple
+            ``(z, nfev)``: the solution and the residual evaluations used
+        """
         solution = root(
             residual, z0, method="hybr",
             options={"xtol": 1e-12, "maxfev": self.maxiter * (z0.size + 1)},
@@ -126,22 +151,32 @@ class SteadyStateSolver(Solver):
         return solution.x, solution.nfev
 
     def _solve_current(self, problem: Problem, y) -> SSResult:
-        """Galvanostatic solve: secant iteration on the voltage over potentiostatic solves."""
-        j_target = problem.boundary.j
+        """
+        Galvanostatic solve: secant iteration on the voltage over potentiostatic solves.
+
+        Returns
+        -------
+        SSResult
+            steady state at the mean current density ``boundary.j``
+        """
+        j_target = float(problem.boundary.j)
         V = float(problem.boundary.V if self.initial_voltage is None else self.initial_voltage)
         j_tol = max(self.j_tol * abs(j_target), 1e-9)
         nfev, j = 0, np.nan
-        V_prev = j_prev = None
+        previous: tuple[float, float] | None = None  # (V, j) of the last iteration
         for _ in range(self.max_outer):
             result = self._solve_voltage(problem, V, y)
-            nfev += result.nfev
-            j = result.current_density
+            nfev += result.nfev or 0
+            j = float(result.current_density)
             if abs(j - j_target) <= j_tol:
                 result.mode, result.nfev = Mode.CURRENT, nfev
                 return result
             # dV/dj: ohmic path (j = (OCV - V) / R) first, then the secant
-            slope = -problem.resistance if j_prev is None or j == j_prev else (V - V_prev) / (j - j_prev)
-            V_prev, j_prev = V, j
+            if previous is None or j == previous[1]:
+                slope = -problem.resistance
+            else:
+                slope = (V - previous[0]) / (j - previous[1])
+            previous = (V, j)
             V += (j_target - j) * slope
             y = result.y  # warm start
         raise RuntimeError(

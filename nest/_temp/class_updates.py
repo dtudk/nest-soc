@@ -1,7 +1,24 @@
-from nest import boundary, cell, properties, layers
+"""
+Prototype: ``Problem`` replacing ``nest.eis.Model``, with the computations shared
+by both scenarios moved into subclasses of ``BoundaryData`` and ``Cell``.
+"""
+
+import copy
+
 import numpy as np
 
+from nest import boundary, cell, properties
 from nest.constants import F, R
+from nest.layers import Layer, PorousTransport
+
+SIDES = ("fuel", "air")
+
+
+def _check_side(side: str) -> str:
+    """Return ``side`` if it is "fuel" or "air", else raise ``ValueError``."""
+    if side not in SIDES:
+        raise ValueError(f"side must be 'fuel' or 'air', got {side!r}")
+    return side
 
 
 # ----------------------------------------------------------------------------
@@ -57,7 +74,7 @@ class Cell(cell.Cell):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.distributed and self.fuel_channel.length != self.air_channel.length:
+        if self.distributed and self.channel("fuel").length != self.channel("air").length:
             raise ValueError("Fuel and air channel lengths must be equal (co-flow columns).")
 
     # -- layout --
@@ -70,14 +87,17 @@ class Cell(cell.Cell):
         """Layers in degradation order: fuel, air, electrolytes."""
         return (self.electrode_fuel, self.electrode_air, *self.electrolyte)
 
-    def electrode(self, side: str) -> layers.Layer:
+    def electrode(self, side: str) -> Layer:
         return self.electrode_fuel if _check_side(side) == "fuel" else self.electrode_air
 
     def channel(self, side: str) -> cell.ChannelGeometry:
-        return self.fuel_channel if _check_side(side) == "fuel" else self.air_channel
+        channel = self.fuel_channel if _check_side(side) == "fuel" else self.air_channel
+        if channel is None:
+            raise ValueError(f"The cell has no {side} channel (lumped cell)")
+        return channel
 
     @property
-    def support_transport(self) -> layers.PorousTransport:
+    def support_transport(self) -> PorousTransport:
         """Gas transport of the fuel support (the fuel electrode's if there is none)."""
         support = self.fuel_support
         return self.electrode_fuel.transport if support is None else support.transport
@@ -100,7 +120,7 @@ class Cell(cell.Cell):
         """Gas mixture of an electrode; the support carries the fuel gas."""
         return self.electrode("fuel" if side == "support" else side).kinetic.gas
 
-    def transport(self, side: str) -> layers.PorousTransport:
+    def transport(self, side: str) -> PorousTransport:
         """Gas transport model of an electrode or the fuel support."""
         return self.support_transport if side == "support" else self.electrode(side).transport
 
@@ -114,7 +134,10 @@ class Cell(cell.Cell):
 
     def capacitance(self, side: str) -> float:
         """Volumetric double-layer capacitance of the electrode [F/m^3]."""
-        return self.electrode(side).capacitance_volumetric
+        capacitance = self.electrode(side).capacitance_volumetric
+        if capacitance is None:
+            raise ValueError(f"The {side} electrode needs capacitance_volumetric")
+        return capacitance
 
     # -- electrochemistry --
     def equilibrium_potential(self, side: str, T, Ps):
@@ -299,17 +322,17 @@ class Grid:
         if not c.distributed:
             raise ValueError("The distributed grid needs cell.fuel_channel and cell.air_channel")
         fuel, air, support = c.electrode_fuel, c.electrode_air, c.fuel_support
-        support_thickness = 0.0 if support is None else support.delta
         self.n_x = c.elements if n_x is None else n_x
         self.n_zf = fuel.elements if n_zf is None else n_zf
         self.n_za = air.elements if n_za is None else n_za
-        if support_thickness <= 0:
-            self.n_zs = 0
+        if support is None or support.delta <= 0:
+            support_thickness, self.n_zs = 0.0, 0
         else:
+            support_thickness = support.delta
             self.n_zs = support.elements if n_zs is None else n_zs
 
-        self.x_faces, self.x, self.dx = _uniform(c.fuel_channel.length, self.n_x)
-        self.x_air_faces, self.x_air, self.dx_air = _uniform(c.air_channel.length, self.n_x)
+        self.x_faces, self.x, self.dx = _uniform(c.channel("fuel").length, self.n_x)
+        self.x_air_faces, self.x_air, self.dx_air = _uniform(c.channel("air").length, self.n_x)
         self.z_fuel_faces, self.z_fuel, self.dz_fuel = _uniform(fuel.delta, self.n_zf)
         self.z_air_faces, self.z_air, self.dz_air = _uniform(air.delta, self.n_za)
         self.z_support_faces, self.z_support, self.dz_support = _uniform(
@@ -386,8 +409,15 @@ class Problem:
                  n_x=None, n_zf=None, n_za=None, n_zs=None, material=None):
         self.cell = cell
         self.boundary = Boundary.from_data(boundary)
-        self.grid = Grid(cell, n_x, n_zf, n_za, n_zs) if cell.distributed else None
+        self._grid = Grid(cell, n_x, n_zf, n_za, n_zs) if cell.distributed else None
         self.material = material
+
+    @property
+    def grid(self) -> Grid:
+        """Grid of the distributed scenario; lumped problems have none."""
+        if self._grid is None:
+            raise ValueError("Lumped problems (no channels) have no grid")
+        return self._grid
 
     @property
     def distributed(self) -> bool:

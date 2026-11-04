@@ -1,4 +1,7 @@
 # ruff.toml
+extend-exclude = ["nest/_temp"]  # prototypes, not linted
+force-exclude = true  # also when the path is passed explicitly (editors, pre-commit)
+
 [lint]
 preview = true
 explicit-preview-rules = true          # only opt in to the preview rules named below
