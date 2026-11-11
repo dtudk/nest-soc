@@ -28,3 +28,5 @@ nest/examples/tutorials/*.py
 # an option to have local notes and test that doesn't get pushed (Or secrets)
 local
 local/*
+
+nest/examples/projects/
