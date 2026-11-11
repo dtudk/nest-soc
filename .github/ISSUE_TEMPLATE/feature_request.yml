@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest a new model, solver option, or other improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What do you need?
+      description: The problem or use case, e.g. a physical effect, operating mode, or output that is missing.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How it could work, including equations or references if relevant.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Papers, data sets, or other code.
