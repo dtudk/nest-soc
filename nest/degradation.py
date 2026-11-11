@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.constants import pi
+from scipy.stats import norm
 from abc import ABC, abstractmethod
 
 from nest.constants import R, F
@@ -283,57 +284,31 @@ class NickelAgglomeration(Degradation):
         float
             coordination number between i,j [-]
 
+        Notes
+        -----
+        We calculate the coordination number with two different functions depending on the ratio of the particle sizes.
+        This is to cohorborate with the comparison shown by Bertei & Nicolella (2011) https://doi.org/10.1016/j.powtec.2011.07.011
+
         Reference
         ---------
         1. https://doi.org/10.1016/j.jpowsour.2009.02.051
 
         """
-        return (
-            0.5
-            * (1 + r_i**2 / r_j**2)
-            * self.z_bar
-            * psi_j
-            / r_j
-            / (psi_i / r_i + psi_j / r_j)
-        )
-
-    def p_i(self, psi_i: float, psi_j: float, r_i: float, r_j: float) -> float:
-        """
-        Percolation probability of i-particle.
-
-        Parameters
-        ----------
-        psi_i : float
-            solid volume fraction of i [-]
-        psi_j : float
-            solid volume fraction of j [-]
-        r_i : float
-            mean particle radius of i [m]
-        r_j : float
-            mean particle radius of j [m]
-
-        Returns
-        -------
-        float
-            percolation probability of i-particle [-]
-
-        Notes
-        -----
-        * There are multiple equations for this parameter,
-          we are using the one proposed by Ref. [1]
-
-        Reference
-        ---------
-        1. https://doi.org/10.1016/j.powtec.2011.07.011
-
-        """
-        z_ii = self.z_ii(psi_i, psi_j, r_i, r_j)
-        p_i = 0
-        if z_ii > 4.236:
-            p_i = 1
-        elif z_ii > 1.764:
-            p_i = 1 - ((4.236 - z_ii) / 2.472) ** 3.7
-        return p_i
+        p = r_i / r_j
+        if p <= 1:
+            # Chen et al. 2009, DOI: 10.1016/j.jpowsour.2009.02.051
+            z_ij = (
+                0.5
+                * (1 + r_i**2 / r_j**2)
+                * self.z_bar
+                * psi_j
+                / r_j
+                / (psi_i / r_i + psi_j / r_j)
+            )
+        else:
+            # Suzuki and Oshima (1983). Ref [17] in Chen et al. 2009
+            z_ij = 0.5*(2-3**0.5)*(p+1)/(1+p-(p*(p+2))**0.5)*6 *psi_j/r_j/(psi_j/r_j+psi_i/r_i)
+        return z_ij
 
     def l_tpb(self, r_ed: float) -> float:
         """
@@ -362,7 +337,8 @@ class NickelAgglomeration(Degradation):
 
         """
         z_ed_el = self.z_ij(self.psi_ed, self.psi_el, r_ed, self.r0_el)
-        r_c = r_ed * np.sin(self.theta)
+        r_c = np.minimum(r_ed,self.r0_el) * np.sin(self.theta)
+        
         return (3 / 2 * r_c / r_ed**3 * (1 - self.epsilon)) * self.psi_ed * z_ed_el
 
     def l_tpb_eff(self, r_ed: float) -> float:
@@ -381,16 +357,28 @@ class NickelAgglomeration(Degradation):
 
         Notes
         -----
-        * For numerical safety, we are limiting the percolation probability to a min. 1%
+        * Expression is modified from original source based on experimental values from FIB-SEM 3D reconstructions for Ni/YSZ
+        * Differently from previous sources, here we assume a normal distribution which is divided into two parts, one for Ni and other for YSZ. This is done to assume that the probability of YSZ percolation is constant along Ni degradation and avoid the cases where percolation probability would increase with Ni agglomeration.
 
         References
         ----------
         1. https://doi.org/10.1016/j.jpowsour.2009.02.051
 
         """
-        p_ed = self.p_i(self.psi_ed, self.psi_el, r_ed, self.r0_el)
-        p_el = self.p_i(self.psi_el, self.psi_ed, self.r0_el, r_ed)
-        return self.l_tpb(r_ed) * max(p_ed * p_el, 0.01)
+
+        # For nickel
+        z_ii = self.z_ii(self.psi_ed, self.psi_el, r_ed, self.r0_el)
+        if z_ii <= 2:
+            p_ni = norm.pdf(z_ii, loc=2, scale=0.40)
+        else:
+            p_ni = 1
+        # For YSZ
+        z_ii = self.z_ii(self.psi_ed, self.psi_el, self.r0_ed, self.r0_el)
+        if z_ii >= 2:
+            p_ysz = norm.pdf(z_ii, loc=2, scale=0.40)
+        else:
+            p_ysz = 1
+        return self.l_tpb(r_ed) * p_ni * p_ysz
 
     def xi_i(self, psi_i: float, psi_j: float, r_i: float, r_j: float) -> float:
         """
@@ -467,7 +455,7 @@ class NickelAgglomeration(Degradation):
             / self.r0_el**3
             / (self.psi_el / self.r0_el**3 + self.psi_ed / (r / 1e6) ** 3)
         )
-        Z_el_el = self.z_ii(self.psi_el, self.psi_el, self.r0_el, self.r0_el)
+        Z_el_el = self.z_ii(self.psi_el, self.psi_ed, self.r0_el, self.r0_ed) # assumed constant
         Z_el_ed = self.z_ij(self.psi_el, self.psi_ed, self.r0_el, r / 1e6)
         n_tot = (1 - self.epsilon) / (
             4 / 3 * pi * self.r0_el**3 * xi_el + 4 / 3 * pi * (r / 1e6) ** 3 * xi_ed

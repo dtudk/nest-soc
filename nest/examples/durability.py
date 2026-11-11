@@ -21,7 +21,9 @@ def durability_test():
     fuelMix = properties.Mixture(
         (properties.BasicSpecies.H2, properties.BasicSpecies.H2O)
     )
-    airMix = properties.Mixture((properties.BasicSpecies.O2))
+    airMix = properties.Mixture((properties.BasicSpecies.O2, properties.BasicSpecies.N2))
+
+    # OBS: Ni-YSZ microstructure from AFL type B: https://doi.org/10.1016/j.jpowsour.2013.08.021
 
     # Define cell layers
     Ni_YSZ = layers.Layer(
@@ -38,16 +40,16 @@ def durability_test():
             E_act=1.09 / 8.617333262e-5 * 8.314510,
         ),
         transport=layers.BinaryFick(
-            dp=600e-9,
-            epsilon=0.3,
+            dp=2*382e-9,
+            epsilon=0.22,
             tau=2,
         ),
         degradation=degradation.NickelAgglomeration(
-            psi_ed=0.4,
-            psi_el=0.6,
-            r0_ed=250e-9,
-            r0_el=350e-9,
-            epsilon=0.3,
+            psi_ed=0.285/(0.493+0.285),
+            psi_el=0.493/(0.493+0.285),
+            r0_ed=211e-9,
+            r0_el=241e-9,
+            epsilon=0.22,
             alpha=3.04e8,
             r_ed_max=500e-9,
         ),
@@ -77,9 +79,9 @@ def durability_test():
             alpha=0.65,
             beta=1 - 0.65,
             gamma=1.51556e8,
-            nu=np.array([-0.5]),
+            nu=np.array([-0.5, 0]),
             E_act=1.45 / 8.617333262e-5 * 8.314510,
-            p=np.array([0.22]),
+            p=np.array([0.22, 0]),
         ),
         transport=layers.BinaryFick(dp=6e-7, epsilon=0.3, tau=2.8),
         degradation=degradation.ChromiumPoison(
