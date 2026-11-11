@@ -1,0 +1,37 @@
+name: Bug report
+description: Something in nest-soc gives an error or a wrong result
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal example
+      description: Code that reproduces the problem (cell, layers, boundary conditions, solver call).
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Error message or output
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: nest-soc version or commit
+      placeholder: e.g. 0.3.1 or a commit hash
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Python version and OS
+      placeholder: e.g. Python 3.12, Windows 11
