@@ -1,0 +1,30 @@
+# Only dev and bug-fix/* may be merged into main.
+# Required status check "Source branch" in the main ruleset (.github/rulesets/main.json).
+name: Main source branch
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize]  # edited: the base branch was changed
+
+jobs:
+  source-branch:
+    name: Source branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that the PR comes from dev or bug-fix/* of this repository
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [[ "$HEAD_REPO" != "$BASE_REPO" ]]; then
+            echo "::error::PRs into main must come from a branch of $BASE_REPO, not from $HEAD_REPO."
+            exit 1
+          fi
+          if [[ "$HEAD_REF" == "dev" || "$HEAD_REF" == bug-fix/* ]]; then
+            echo "Source branch '$HEAD_REF' may be merged into main."
+          else
+            echo "::error::Only dev and bug-fix/* may be merged into main, not '$HEAD_REF'. Open the PR into dev instead."
+            exit 1
+          fi
