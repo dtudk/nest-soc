@@ -123,15 +123,11 @@ class Model:
         self.sigma_a = float(air.conductivity.sigma(self.T))
 
         self.resistance = (
-            self.grid.dz_fuel
-            / (2 * self.sigma_f)  # half of one grid cell in fuel electrode
-            + sum(
+            sum(
                 layer.delta
                 / layer.conductivity.sigma(self.T)  # sum of all electrolyte layers
                 for layer in cell.electrolyte
             )
-            + self.grid.dz_air
-            / (2 * self.sigma_a)  # half of one grid cell in air electrode
         )
 
         self.c_in_f, self.u_in_f = self._inlet_conditions(
